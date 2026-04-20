@@ -54,5 +54,4 @@
 
 ## 7. Contexto adicional
 
-- Screenshot de referência do desktop atual: `screenshot-2026-04-20_14-30-55.png` (raiz do repo).
 - Tema visual em uso: `lg-umbra` (em `omarchy/themes/`).
