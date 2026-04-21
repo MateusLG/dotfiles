@@ -9,6 +9,7 @@ Configurações pessoais do meu setup (Omarchy / Hyprland em Arch Linux).
 - [`alacritty/`](alacritty/) — configuração do Alacritty
 - [`kitty/`](kitty/) — configuração do Kitty
 - [`ghostty/`](ghostty/) — configuração do Ghostty
+- [`nvim/`](nvim/) — customizações do Neovim sobre o LazyVim (keymaps)
 - [`claude/`](claude/) — configurações do Claude Code (`settings.json`, skills, `CLAUDE.md`)
 - [`omarchy/`](omarchy/) — customizações do Omarchy (temas)
 - [`scripts/`](scripts/) — scripts utilitários (ex: `work.sh`)
