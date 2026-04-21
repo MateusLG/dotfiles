@@ -39,14 +39,18 @@
   color: @accent;
 }
 
-#cpu,
-#memory,
 #battery,
 #pulseaudio,
 #custom-omarchy,
 #custom-update {
   min-width: 12px;
   margin: 0 7.5px;
+}
+
+#cpu,
+#memory {
+  margin: 0 6px;
+  padding: 0 4px;
 }
 
 #cpu.warning,
