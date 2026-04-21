@@ -5,12 +5,14 @@
   "spacing": 0,
   "height": 26,
   "modules-left": ["custom/omarchy", "hyprland/workspaces"],
-  "modules-center": ["cpu", "clock", "memory", "custom/update", "custom/voxtype", "custom/screenrecording-indicator", "custom/idle-indicator", "custom/notification-silencing-indicator"],
+  "modules-center": ["clock", "custom/update", "custom/voxtype", "custom/screenrecording-indicator", "custom/idle-indicator", "custom/notification-silencing-indicator"],
   "modules-right": [
     "group/tray-expander",
     "bluetooth",
     "network",
     "pulseaudio",
+    "cpu",
+    "memory",
     "battery",
     "custom/kb-layout",
     "group/tray-expander"
@@ -57,7 +59,7 @@
 
   "cpu": {
     "interval": 5,
-    "format": "󰻠 {usage}%",
+    "format": "{usage}%",
     "tooltip": false,
     "states": {
       "warning": 70,
@@ -68,7 +70,7 @@
   },
   "memory": {
     "interval": 5,
-    "format": "󰍛 {percentage}%",
+    "format": "{percentage}%",
     "tooltip-format": "RAM: {used:0.1f}G / {total:0.1f}G  •  Swap: {swapUsed:0.1f}G / {swapTotal:0.1f}G",
     "states": {
       "warning": 75,
