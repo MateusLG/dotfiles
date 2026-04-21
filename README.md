@@ -6,6 +6,9 @@ Configurações pessoais do meu setup (Omarchy / Hyprland em Arch Linux).
 
 - [`hypr/`](hypr/) — configurações do Hyprland (input, atalhos, monitores, idle)
 - [`waybar/`](waybar/) — configuração e estilo da Waybar
+- [`alacritty/`](alacritty/) — configuração do Alacritty
+- [`kitty/`](kitty/) — configuração do Kitty
+- [`ghostty/`](ghostty/) — configuração do Ghostty
 - [`claude/`](claude/) — configurações do Claude Code (`settings.json`, skills, `CLAUDE.md`)
 - [`omarchy/`](omarchy/) — customizações do Omarchy (temas)
 - [`scripts/`](scripts/) — scripts utilitários (ex: `work.sh`)
