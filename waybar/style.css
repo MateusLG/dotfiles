@@ -39,6 +39,8 @@
   color: @accent;
 }
 
+#cpu,
+#memory,
 #battery,
 #pulseaudio,
 #custom-omarchy,
@@ -47,10 +49,12 @@
   margin: 0 7.5px;
 }
 
-#cpu,
+#cpu {
+  margin-left: 14px;
+}
+
 #memory {
-  margin: 0 6px;
-  padding: 0 4px;
+  margin-right: 14px;
 }
 
 #cpu.warning,
