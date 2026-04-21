@@ -42,6 +42,7 @@
 ## 5. O que evitar
 
 - Não adicionar `Co-Authored-By` em commits.
+- Não commitar segredos nem info corporativa (usuários de VPN, hosts/IPs internos, nomes de perfis, tokens). Se precisar referenciar, use placeholder ou variável de ambiente.
 - Não criar scripts de instalação/symlink automáticos sem combinar antes.
 
 ## 6. Comandos úteis
