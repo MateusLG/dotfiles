@@ -17,7 +17,7 @@
 - `waybar/` — Waybar (`config.jsonc`, `style.css`)
 - `claude/` — Claude Code (`settings.json`, `CLAUDE.md` template, `skills/`)
 - `omarchy/themes/` — temas customizados do Omarchy (ex: `lg-umbra`)
-- `scripts/` — utilitários shell (ex: `work.sh` — VPN $VPN_PROFILE + RDP via Remmina)
+- `scripts/` — utilitários shell (ex: `work.sh` — VPN + RDP via Remmina, parametrizado por env vars)
 - `system/logind.conf.d/` — overrides do `systemd-logind` (ex: tampa fechada com monitor externo)
 
 ## 3. Convenções
@@ -43,7 +43,7 @@
 ## 5. O que evitar
 
 - Não adicionar `Co-Authored-By` em commits.
-- Não commitar segredos (senhas de VPN, hosts internos da $VPN_PROFILE, tokens). Se precisar referenciar, use placeholder.
+- Não commitar segredos nem info corporativa (usuários de VPN, hosts/IPs internos, nomes de perfis, tokens). Se precisar referenciar, use placeholder ou variável de ambiente.
 - Não criar scripts de instalação/symlink automáticos sem combinar antes.
 
 ## 6. Comandos úteis
