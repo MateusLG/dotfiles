@@ -9,4 +9,5 @@ Configurações do Claude Code.
 
 - `skills/` — skills customizadas
   - `security-scanner.md` — skill para análise de segurança
+  - `gerar-pdf.md` — converte HTML em PDF via Chromium headless
 
