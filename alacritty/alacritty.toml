@@ -16,7 +16,7 @@ size = 9
 padding.x = 14
 padding.y = 14
 decorations = "None"
-opacity = 0.85
+opacity = 0.5
 
 [selection]
 save_to_clipboard = true
