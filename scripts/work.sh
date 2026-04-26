@@ -20,7 +20,7 @@ echo "Aguardando VPN..."
 sleep 3
 
 STATUS=$("$FORTINET" vpn status)
-if echo "$STATUS" | grep -q "Connected"; then
+if echo "$STATUS" | grep -qi "connected"; then
     echo "VPN conectada! Abrindo Remmina..."
     remmina -c "$RDP_PROFILE" &
 else
