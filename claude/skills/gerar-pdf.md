@@ -39,8 +39,8 @@ Use `$CHROMIUM` em vez de hardcodar o caminho.
 
 A flag `--virtual-time-budget=10000` força o Chromium a esperar recursos remotos (ex: Google Fonts) antes de imprimir. **Aplique condicionalmente:**
 
-- ✅ **Use** quando o HTML referencia recursos externos: `<link href="https://fonts.googleapis.com/...">`, CDNs de CSS/JS, imagens remotas.
-- ❌ **Não use** quando o HTML é 100% local (sem `http://` ou `https://` no `<head>`/`<body>`) — só adiciona latência sem benefício.
+- **Use** quando o HTML referencia recursos externos: `<link href="https://fonts.googleapis.com/...">`, CDNs de CSS/JS, imagens remotas.
+- **Não use** quando o HTML é 100% local (sem `http://` ou `https://` no `<head>`/`<body>`) — só adiciona latência sem benefício.
 
 Antes de decidir, faça um `grep -E "https?://" html/<arquivo>.html` para checar.
 
