@@ -1,6 +1,6 @@
 ---
 name: gerar-pdf
-description: Converte HTML em PDF via Chromium headless, organizando os arquivos em html/, pdf/ e assets/ na raiz do repositório. Use a flag --virtual-time-budget=10000 quando o HTML depende de fontes/CSS externos (ex: Google Fonts). Use quando o usuário pedir para gerar/converter PDF a partir de HTML. NÃO use para gerar PDF a partir de Markdown, docs Office, LaTeX ou imagens — esta skill é exclusiva para entrada HTML.
+description: Converte HTML em PDF via Chromium headless, organizando os arquivos em html/, pdf/ e assets/ na raiz do repositório. Use a flag --virtual-time-budget=10000 quando o HTML depende de fontes/CSS externos (ex. Google Fonts). Use quando o usuário pedir para gerar/converter PDF a partir de HTML. NÃO use para gerar PDF a partir de Markdown, docs Office, LaTeX ou imagens — esta skill é exclusiva para entrada HTML.
 ---
 
 # Contexto
