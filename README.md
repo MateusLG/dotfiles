@@ -11,6 +11,7 @@ Configurações pessoais do meu setup (Omarchy / Hyprland em Arch Linux).
 - [`ghostty/`](ghostty/) — configuração do Ghostty
 - [`nvim/`](nvim/) — customizações do Neovim sobre o LazyVim (keymaps)
 - [`zsh/`](zsh/) — Zsh + Powerlevel10k (substitui o bash+starship padrão do Omarchy)
+- [`wsl/`](wsl/) — variante do Zsh adaptada pra WSL2 + Arch (sem Omarchy/Hyprland)
 - [`claude/`](claude/) — configurações do Claude Code (`settings.json`, skills, `CLAUDE.md`)
 - [`omarchy/`](omarchy/) — customizações do Omarchy (temas)
 - [`scripts/`](scripts/) — scripts utilitários (ex: `work.sh`)
