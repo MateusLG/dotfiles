@@ -10,7 +10,7 @@ Variante do `zsh/zshrc`: remove o que depende de ambiente gráfico Linux (FortiC
   - **Removido:** `OMARCHY_PATH`, loop de `fns/*`, `/opt/forticlient` no PATH, alias `fortinet`, alias `rdp-embratur`, branch `xterm-kitty` do `ff`.
   - **Adaptado:** `open()` usa `wslview` (do AUR `wslu`) com fallback `explorer.exe`.
 
-O `p10k.zsh` é reaproveitado do `zsh/`: instala via symlink `ln -sf ~/DEV/dotfiles/zsh/p10k.zsh ~/.p10k.zsh`.
+O `p10k.zsh` é reaproveitado do `zsh/`: instala via symlink `ln -sf ~/dotfiles/zsh/p10k.zsh ~/.p10k.zsh`.
 
 ## Dependências (pacman)
 
@@ -34,8 +34,8 @@ Opcional (AUR): `wslu` pro `wslview`. Sem ele, `open()` cai em `explorer.exe`.
    ```
 3. Copiar zshrc e linkar p10k:
    ```bash
-   cp ~/DEV/dotfiles/wsl/zshrc ~/.zshrc
-   ln -sf ~/DEV/dotfiles/zsh/p10k.zsh ~/.p10k.zsh
+   cp ~/dotfiles/wsl/zshrc ~/.zshrc
+   ln -sf ~/dotfiles/zsh/p10k.zsh ~/.p10k.zsh
    ```
 4. Trocar shell padrão:
    ```bash
