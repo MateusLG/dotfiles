@@ -89,3 +89,14 @@ Referências: apple.com, samsung.com, claude.com, anthropic.com.
 - "Faço commit?" → **não**, salvo se o usuário pediu explicitamente.
 - "Crio um README?" → **não**, salvo se o usuário pediu.
 - "Posso instalar essa lib nova?" → pergunta antes.
+
+## 11. Ambiente WSL2 (workstation Windows)
+
+
+- **Sem ambiente gráfico Linux** dentro do WSL: nada de Hyprland, Wayland, Kitty, Alacritty, Waybar. Terminal acessado via Windows Terminal no host.
+- **Shell:** Zsh + Powerlevel10k usando `wsl/zshrc` do repo de dotfiles (não `zsh/zshrc`, que assume Omarchy/Hyprland). `~/.p10k.zsh` é symlink pra `~/dotfiles/zsh/p10k.zsh` (reaproveitado).
+- **Sudo** dentro do WSL pede senha → comandos com `sudo` devem ser rodados pelo usuário com prefixo `!`.
+- **Executar comandos no WSL a partir do Windows:** `wsl -d archlinux -- bash -lc '...'`.
+- **Editar arquivos dentro do WSL via ferramentas que escrevem em path Windows:** staging em `/mnt/c/...` + `tr -d '\r'` + `cp` pra normalizar CRLF→LF.
+- **Paths cross-OS:** Windows → WSL via `\\wsl$\archlinux\...` (UNC); WSL → Windows via `/mnt/c/...`.
+- **Abrir arquivos/URLs no host Windows a partir do WSL:** `explorer.exe <path>` (sempre disponível) ou `wslview` (se `wslu` instalado via AUR).
