@@ -1,77 +1,96 @@
 # apps self-hosted
 
-Dois sites migrados do Railway pra esta VPS (junho/2026), atrás da Cloudflare.
+Três sites migrados do Railway pra esta VPS (junho/2026), atrás da Cloudflare.
 
-| App            | Stack            | Porta local | Serviço systemd     | Domínio          |
-|----------------|------------------|-------------|---------------------|------------------|
-| lgmateus.com   | Next.js 16 (Node)| 3000        | `lgmateus.service`  | lgmateus.com     |
-| turmasunb      | FastAPI (Python) | 8000        | `turmasunb.service` | turmasunb.com    |
+| App          | Stack                       | Porta | Serviço             | User (sistema) | Domínio              |
+|--------------|-----------------------------|-------|---------------------|----------------|----------------------|
+| lgmateus     | Next.js 16 (Node)           | 3000  | `lgmateus.service`  | `lgmateus`     | lgmateus.com         |
+| turmasunb    | FastAPI (Python)            | 8000  | `turmasunb.service` | `turmasunb`    | turmasunb.com        |
+| album-copa   | FastAPI + Vite (serve dist) | 8001  | `albumcopa.service` | `albumcopa`    | album.lgmateus.com   |
 
-Código clonado em `~/apps/<app>`. Os dois rodam como serviço systemd (sobem no boot,
-reiniciam em falha), expostos só em `127.0.0.1` e publicados pelo nginx.
+## Isolamento (importante)
+
+Cada app roda como **user de sistema dedicado, sem sudo**, com código em
+**`/srv/<app>`** (não em `~/apps` — antes rodavam como `mateus`, que tem `NOPASSWD`,
+o que tornava qualquer RCE num app uma escalada direta pra root). Cada user tem **mise
+próprio** em `/srv/<app>/.local/bin/mise`.
+
+As units têm um drop-in `*.service.d/10-hardening.conf` com sandbox systemd:
+`NoNewPrivileges=yes` (mata escalada via `sudo`/setuid mesmo que o user tivesse),
+`ProtectSystem=strict`, `ProtectHome=yes` (o processo não enxerga `/home/mateus` → a
+chave SSH fica protegida), `ReadWritePaths=/srv/<app>`, etc. Um app comprometido não
+vira root, não lê a chave SSH e não toca nos outros apps.
+
+Os apps escutam só em `127.0.0.1`; quem publica é o nginx.
 
 ## Fluxo de uma requisição
 
 ```
 navegador → Cloudflare (proxy laranja, TLS na borda)
-          → VPS:443 nginx (Origin Certificate, Full strict)
-          → 127.0.0.1:{3000,8000} app (systemd)
-          → Postgres local (só turmasunb)
+          → VPS:443 nginx (Origin Certificate, Full strict)   [ufw: 80/443 só de IPs da CF]
+          → 127.0.0.1:{3000,8000,8001} app (systemd, user dedicado)
+          → Postgres local (turmasunb e album-copa)
 ```
 
 ## Deploy
 
 ```sh
-deploy.sh lgmateus     # git pull + npm ci + build + restart + health
-deploy.sh turmasunb    # git pull + uv pip install + restart + health
+deploy.sh lgmateus     # git pull + npm ci + build
+deploy.sh turmasunb    # git pull + uv pip install
+deploy.sh albumcopa    # git pull + uv sync (backend) + npm build (frontend)
 deploy.sh all
 ```
 
-(`bin/deploy.sh`; na VPS há um symlink `~/.local/bin/deploy`.) Precisa do shell com
-mise ativo (node/npm/uv no PATH).
+(`bin/deploy.sh`; symlink `~/.local/bin/deploy`.) O script roda o build **como o user
+dedicado** (`sudo -u <app>` com o mise daquele user) e reinicia o serviço + health check.
 
 ## Logs / status
 
 ```sh
-systemctl status lgmateus turmasunb
-journalctl -u lgmateus -f
-journalctl -u turmasunb -f
+systemctl status lgmateus turmasunb albumcopa
+journalctl -u albumcopa -f
 ```
 
 ## TLS / Cloudflare
 
-- Proxy **laranja** ligado nos dois domínios; SSL/TLS mode **Full (strict)**.
-- nginx usa **Cloudflare Origin Certificates** (válidos ~15 anos) em
-  `/etc/ssl/cloudflare/{lgmateus,turmasunb}.{crt,key}` — **não versionados** (a key é segredo).
-  Regenerar em: painel Cloudflare → domínio → SSL/TLS → Origin Server → Create Certificate.
-- DNS: registros A `@` e `www` → IP da VPS, proxied.
+- Proxy **laranja** nos domínios; SSL/TLS mode **Full (strict)**.
+- nginx usa **Cloudflare Origin Certificates** em `/etc/ssl/cloudflare/` — **não
+  versionados** (a key é segredo). Regenerar em: painel Cloudflare → SSL/TLS → Origin
+  Server → Create Certificate.
+- `lgmateus.{crt,key}` é **wildcard `*.lgmateus.com`** → cobre `album.lgmateus.com` sem
+  cert novo. `turmasunb.{crt,key}` cobre `turmasunb.com`.
+- DNS: registros A → IP da VPS (`2.25.202.113`), **proxied**. `album` é um A próprio.
+- O `ufw` libera `80/443` **só das faixas da Cloudflare** (`bin/ufw-cloudflare.sh`).
 
-## turmasunb — Postgres
+## Postgres (local, apt — só loopback, scram)
 
-- Banco `turmasunb` / role `turmasunb` no Postgres local (apt). Guarda só a tabela
-  `links` (PK `materia+turma`); a estrutura das turmas vem do `data.json` versionado no repo do app.
-- Config do app em `~/apps/turmasunb/.env` (`DATABASE_URL`, `SEMESTER`, `BACKUP_TOKEN`,
-  `BACKUP_PATH=~/apps/turmasunb/backups`) — **não versionado** (segredos).
-- O app carrega os links em memória na inicialização → **reiniciar o serviço** após mexer
-  direto no banco.
-- Migração de dados (PG18 no Railway, cliente PG16 local não faz pg_dump entre versões):
+- **turmasunb**: db/role `turmasunb`, tabela `links` (PK `materia+turma`); estrutura das
+  turmas vem do `data.json` versionado. Carrega em memória no boot → **reiniciar o
+  serviço** após mexer no banco. `.env` em `/srv/turmasunb/.env`.
+- **album-copa**: db/role `albumcopa` (tabelas `usuario`/`figurinha`/`colecao_usuario`/
+  `audit_log`), schema via **alembic** (`alembic upgrade head`). Auth é só header
+  `X-Username` (sem senha). `.env` em `/srv/albumcopa/backend/.env` (só `DATABASE_URL`).
+- Migração Railway→local sempre por `\copy` (Railway PG18 vs cliente PG16 local não faz
+  `pg_dump` cross-version). Lembrar de resetar as sequences após carregar dados:
   ```sh
-  psql "$RAILWAY_PUBLIC_URL" -c "\copy links TO STDOUT" | psql "$LOCAL_URL" -c "\copy links FROM STDIN"
+  psql "$RAILWAY" -c "\copy <tabela> TO STDOUT" | psql "$LOCAL" -c "\copy <tabela> FROM STDIN"
   ```
 
 ## Reproduzir do zero (resumo)
 
-Não está no `setup.sh` (envolve segredos e passos manuais). Ordem:
+Fora do `setup.sh` (envolve segredos e passos manuais). Por app:
 
-1. `sudo apt-get install -y nginx postgresql certbot python3-certbot-nginx`
-2. Clonar os repos em `~/apps`.
-3. **turmasunb**: `uv venv --python 3.12 && uv pip install -r requirements.txt`; criar
-   `.env`; criar role/db no Postgres; importar os dados.
-4. **lgmateus**: `npm ci && npm run build`.
-5. Instalar os units de `etc/systemd/system/` e habilitar (`systemctl enable --now`).
-   No `lgmateus.service` o `ExecStart` aponta pro `node` absoluto do mise — **conferir o
-   path da versão** se o mise atualizar o Node.
-6. Instalar as confs de `etc/nginx/sites-available/`, linkar em `sites-enabled`,
-   remover o `default`, instalar os Origin Certs, `nginx -t && systemctl reload nginx`.
-7. `ufw allow 'Nginx Full'`.
-8. Cloudflare: A records → VPS (proxied) + SSL mode Full (strict).
+1. `sudo apt-get install -y nginx postgresql`
+2. User: `sudo useradd --system --create-home --home-dir /srv/<app> --shell /usr/sbin/nologin <app>`
+3. Código em `/srv/<app>` (`chown -R <app>:<app>`); mise próprio do user
+   (`curl https://mise.run | sh` com `HOME=/srv/<app>`) + runtime (`mise use -g ...`).
+4. Build como o user: **turmasunb** `uv venv && uv pip install -r requirements.txt`;
+   **lgmateus** `npm ci && npm run build`; **album-copa** `uv sync` no backend +
+   `npm ci && npm run build` no frontend, criar role/db + `alembic upgrade head`.
+5. Postgres: role/db dedicados, `.env` do app com `DATABASE_URL` local; importar dados.
+6. Unit de `etc/systemd/system/<app>.service` + drop-in `…/10-hardening.conf`;
+   `systemctl enable --now <app>`.
+7. nginx: conf de `etc/nginx/sites-available/`, linkar em `sites-enabled`, remover o
+   `default`, instalar os Origin Certs, `nginx -t && systemctl reload nginx`.
+8. Firewall: `bin/ufw-cloudflare.sh` (libera 80/443 só da Cloudflare).
+9. Cloudflare: A record → VPS (proxied) + SSL mode Full (strict).

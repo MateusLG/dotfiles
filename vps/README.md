@@ -8,6 +8,7 @@ Usuário comum `mateus` no grupo `sudo`. Os arquivos espelham os caminhos reais 
 - [`setup.sh`](setup.sh) — script idempotente que reproduz todo o setup abaixo.
 - [`apps.md`](apps.md) — sites self-hosted (lgmateus.com, turmasunb) atrás da Cloudflare.
 - [`bin/deploy.sh`](bin/deploy.sh) — deploy dos apps (git pull + build + restart + health).
+- [`bin/ufw-cloudflare.sh`](bin/ufw-cloudflare.sh) — restringe `80/443` às faixas de IP da Cloudflare.
 - [`mobile-claude.md`](mobile-claude.md) — acesso ao Claude Code pelo celular (mosh + tmux + Termius).
 - `etc/systemd/system/{lgmateus,turmasunb}.service` → unidades systemd dos apps.
 - `etc/nginx/sites-available/{lgmateus.com,turmasunb.com}` → server blocks do nginx.
@@ -34,7 +35,13 @@ ganhamos dele lendo antes.
 
 `default deny incoming`, `allow outgoing`, a `22/tcp` liberada com `LIMIT`
 (rate-limit: bloqueia IP com 6+ conexões em 30s) e `60000:60010/udp` aberta pro mosh.
-Não há arquivo versionado — as regras são aplicadas pelo `setup.sh`.
+As regras base são aplicadas pelo `setup.sh`.
+
+As portas web (`80/443`) **não** ficam abertas pra todos: o
+[`bin/ufw-cloudflare.sh`](bin/ufw-cloudflare.sh) libera-as apenas das faixas de IP
+oficiais da Cloudflare, pra ninguém furar o proxy batendo direto no IP da VPS (WAF,
+rate-limit e anti-DDoS ficam na borda; o IP de origem fica escondido). É idempotente —
+re-rodar atualiza as faixas quando a Cloudflare muda a lista.
 
 ### Acesso mobile (mosh + tmux)
 
@@ -58,6 +65,20 @@ tabela própria `f2b-table`, não conflita com o ufw).
 - Timezone `America/Sao_Paulo`.
 - Swapfile de 2G (`/swapfile`, persistido no `/etc/fstab`).
 - `vm.swappiness=10` — com RAM sobrando, evita ir pra swap cedo demais.
+
+### Updates (unattended + cloud-init travado)
+
+`unattended-upgrades` ativo (só security). O **`cloud-init` está `held`**
+(`apt-mark hold`, vindo da imagem da Hostinger) e **decidimos manter assim** (2026-06-12):
+um upgrade dele não re-roda o provisionamento — que fica registrado em `/var/lib/cloud` —
+mas como alguém o travou de propósito, evitamos o risco de um major bump (24.1 → 26.x)
+mexer em rede/SSH no boot. **Trade-off aceito:** o `cloud-init` não recebe updates de
+segurança e fica congelado. Para reverter a decisão:
+
+```sh
+sudo apt-mark unhold cloud-init
+sudo apt-get install --only-upgrade cloud-init
+```
 
 ### Dev (mise)
 
