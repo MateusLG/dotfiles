@@ -60,7 +60,11 @@ journalctl -u albumcopa -f
 - `lgmateus.{crt,key}` é **wildcard `*.lgmateus.com`** → cobre `album.lgmateus.com` sem
   cert novo. `turmasunb.{crt,key}` cobre `turmasunb.com`.
 - DNS: registros A → IP da VPS (`2.25.202.113`), **proxied**. `album` é um A próprio.
-- O `ufw` libera `80/443` **só das faixas da Cloudflare** (`bin/ufw-cloudflare.sh`).
+- **Origem fechada em duas camadas:** `ufw` libera `80/443` só das faixas da Cloudflare
+  (`bin/ufw-cloudflare.sh`) **e** os vhosts exigem o cert de cliente da CF via
+  Authenticated Origin Pulls (`ssl_verify_client on`). Acesso direto na origem → `400`.
+  Detalhes e rollout no [`README.md`](README.md).
+- IP real do visitante restaurado no log (`bin/nginx-cloudflare-realip.sh`).
 
 ## Postgres (local, apt — só loopback, scram)
 
@@ -75,6 +79,8 @@ journalctl -u albumcopa -f
   ```sh
   psql "$RAILWAY" -c "\copy <tabela> TO STDOUT" | psql "$LOCAL" -c "\copy <tabela> FROM STDIN"
   ```
+- **Backup**: dump diário dos dois bancos via `bin/pg-backup.sh` + `pg-backup.timer`
+  (retenção 14 dias em `/var/backups/postgres/`). Ver [`README.md`](README.md).
 
 ## Reproduzir do zero (resumo)
 

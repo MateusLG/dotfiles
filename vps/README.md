@@ -9,6 +9,8 @@ Usuário comum `mateus` no grupo `sudo`. Os arquivos espelham os caminhos reais 
 - [`apps.md`](apps.md) — sites self-hosted (lgmateus.com, turmasunb) atrás da Cloudflare.
 - [`bin/deploy.sh`](bin/deploy.sh) — deploy dos apps (git pull + build + restart + health).
 - [`bin/ufw-cloudflare.sh`](bin/ufw-cloudflare.sh) — restringe `80/443` às faixas de IP da Cloudflare.
+- [`bin/nginx-cloudflare-realip.sh`](bin/nginx-cloudflare-realip.sh) — gera o snippet de `real_ip` (IP real do visitante).
+- [`bin/pg-backup.sh`](bin/pg-backup.sh) — dump diário dos bancos Postgres (`pg-backup.timer`).
 - [`mobile-claude.md`](mobile-claude.md) — acesso ao Claude Code pelo celular (mosh + tmux + Termius).
 - `etc/systemd/system/{lgmateus,turmasunb}.service` → unidades systemd dos apps.
 - `etc/nginx/sites-available/{lgmateus.com,turmasunb.com}` → server blocks do nginx.
@@ -42,6 +44,35 @@ As portas web (`80/443`) **não** ficam abertas pra todos: o
 oficiais da Cloudflare, pra ninguém furar o proxy batendo direto no IP da VPS (WAF,
 rate-limit e anti-DDoS ficam na borda; o IP de origem fica escondido). É idempotente —
 re-rodar atualiza as faixas quando a Cloudflare muda a lista.
+
+### Origem protegida (Authenticated Origin Pulls + IP real)
+
+Segunda camada além do lock de IP: **AOP** (mTLS Cloudflare→origem). O nginx exige o
+**cert de cliente da Cloudflare** (`ssl_verify_client on` nos vhosts, validando contra a
+CA global `authenticated_origin_pull_ca.pem`); requests que não vêm da CF levam `400`.
+Liga-se em **SSL/TLS → Origin Server → Authenticated Origin Pulls** (opção **Global**) em
+cada zona. A CA pública é baixada de
+`https://developers.cloudflare.com/ssl/static/authenticated_origin_pull_ca.pem` pra
+`/etc/ssl/cloudflare/`.
+
+> **Rollout sem downtime:** subir `ssl_verify_client optional` primeiro, confirmar que a
+> CF manda o cert (header de debug `$ssl_client_verify == SUCCESS`), só então `on`.
+
+Atrás da CF o nginx veria só IPs da Cloudflare. O
+[`bin/nginx-cloudflare-realip.sh`](bin/nginx-cloudflare-realip.sh) gera
+`/etc/nginx/conf.d/cloudflare-realip.conf` (`set_real_ip_from` das faixas da CF +
+`real_ip_header CF-Connecting-IP`), restaurando o **IP real do visitante** no log e no
+`X-Real-IP` repassado aos apps.
+
+### Backup do Postgres
+
+[`bin/pg-backup.sh`](bin/pg-backup.sh) faz `pg_dump -Fc` de `turmasunb` e `albumcopa`
+pra `/var/backups/postgres/`, com retenção de **14 dias**. Roda como o user `postgres`
+(peer auth) via `pg-backup.service`, agendado **diário** pelo `pg-backup.timer`
+(`Persistent=true` — recupera execução perdida se a VPS estava off). É o complemento
+granular ao snapshot **semanal** da Hostinger (disaster recovery): protege contra erro de
+migração / delete / corrupção sem rolar a VPS inteira uma semana. Restaurar:
+`pg_restore -d <db> /var/backups/postgres/<db>-<data>.dump`.
 
 ### Acesso mobile (mosh + tmux)
 
