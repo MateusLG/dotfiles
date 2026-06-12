@@ -12,6 +12,11 @@ server {
     ssl_certificate     /etc/ssl/cloudflare/lgmateus.crt;
     ssl_certificate_key /etc/ssl/cloudflare/lgmateus.key;
 
+    # Authenticated Origin Pulls — so aceita requests com o cert de cliente da Cloudflare
+    # (cert global, ligado em SSL/TLS -> Origin Server -> Authenticated Origin Pulls).
+    ssl_client_certificate /etc/ssl/cloudflare/authenticated_origin_pull_ca.pem;
+    ssl_verify_client on;
+
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
