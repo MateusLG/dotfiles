@@ -1,0 +1,17 @@
+[Unit]
+Description=lgmateus.com (Next.js)
+After=network.target
+
+[Service]
+Type=simple
+User=mateus
+WorkingDirectory=/home/mateus/apps/lgmateus.com
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=PATH=/home/mateus/.local/share/mise/installs/node/24.16.0/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/mateus/.local/share/mise/installs/node/24.16.0/bin/node /home/mateus/apps/lgmateus.com/node_modules/next/dist/bin/next start --hostname 127.0.0.1 --port 3000
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

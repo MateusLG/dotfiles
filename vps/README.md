@@ -6,7 +6,11 @@ Usuário comum `mateus` no grupo `sudo`. Os arquivos espelham os caminhos reais 
 ## Conteúdo
 
 - [`setup.sh`](setup.sh) — script idempotente que reproduz todo o setup abaixo.
+- [`apps.md`](apps.md) — sites self-hosted (lgmateus.com, turmasunb) atrás da Cloudflare.
+- [`bin/deploy.sh`](bin/deploy.sh) — deploy dos apps (git pull + build + restart + health).
 - [`mobile-claude.md`](mobile-claude.md) — acesso ao Claude Code pelo celular (mosh + tmux + Termius).
+- `etc/systemd/system/{lgmateus,turmasunb}.service` → unidades systemd dos apps.
+- `etc/nginx/sites-available/{lgmateus.com,turmasunb.com}` → server blocks do nginx.
 - `etc/ssh/sshd_config.d/00-hardening.conf` → `/etc/ssh/sshd_config.d/00-hardening.conf`
 - `etc/ssh/sshd_config.d/10-keepalive.conf` → `/etc/ssh/sshd_config.d/10-keepalive.conf`
 - `etc/fail2ban/jail.local` → `/etc/fail2ban/jail.local`
