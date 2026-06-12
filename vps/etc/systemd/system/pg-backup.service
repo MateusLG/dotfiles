@@ -1,0 +1,12 @@
+[Unit]
+Description=Dump diario dos bancos Postgres locais
+After=postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=oneshot
+User=postgres
+ExecStart=/usr/local/bin/pg-backup.sh
+NoNewPrivileges=yes
+ProtectHome=yes
+PrivateTmp=yes
