@@ -2,10 +2,9 @@
 # Deploy dos apps self-hosted na VPS: git pull + build + restart do serviço systemd.
 # Uso: deploy.sh {lgmateus|turmasunb|all}
 #
-# Requer o shell com mise ativo (uv/npm/node no PATH) e sudo NOPASSWD pro systemctl.
+# Cada app roda como user de sistema dedicado em /srv/<app>, com mise proprio.
+# O deploy faz git pull + build como esse user (sudo -u) e reinicia o servico.
 set -euo pipefail
-
-APPS="$HOME/apps"
 
 log() { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
 
@@ -26,21 +25,28 @@ health() {
 }
 
 deploy_lgmateus() {
-  log "lgmateus.com (Next.js)"
-  cd "$APPS/lgmateus.com"
-  git pull --ff-only
-  npm ci
-  npm run build
+  log "lgmateus.com (Next.js) — user dedicado em /srv"
+  sudo -u lgmateus env HOME=/srv/lgmateus bash -c '
+    set -e
+    cd /srv/lgmateus
+    git pull --ff-only
+    M="$HOME/.local/bin/mise"
+    "$M" exec -- npm ci
+    "$M" exec -- npm run build
+  '
   sudo systemctl restart lgmateus
   sleep 2
   health lgmateus http://127.0.0.1:3000/
 }
 
 deploy_turmasunb() {
-  log "turmasunb (FastAPI)"
-  cd "$APPS/turmasunb"
-  git pull --ff-only
-  uv pip install -r requirements.txt
+  log "turmasunb (FastAPI) — user dedicado em /srv"
+  sudo -u turmasunb env HOME=/srv/turmasunb bash -c '
+    set -e
+    cd /srv/turmasunb
+    git pull --ff-only
+    "$HOME/.local/bin/mise" exec -- uv pip install -r requirements.txt
+  '
   sudo systemctl restart turmasunb
   sleep 2
   health turmasunb http://127.0.0.1:8000/

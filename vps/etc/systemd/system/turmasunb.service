@@ -5,9 +5,9 @@ Wants=postgresql.service
 
 [Service]
 Type=simple
-User=mateus
-WorkingDirectory=/home/mateus/apps/turmasunb
-ExecStart=/home/mateus/apps/turmasunb/.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+User=turmasunb
+WorkingDirectory=/srv/turmasunb
+ExecStart=/srv/turmasunb/.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
 Restart=on-failure
 RestartSec=3
 
