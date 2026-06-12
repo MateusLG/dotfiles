@@ -16,5 +16,6 @@ Configurações pessoais do meu setup (Omarchy / Hyprland em Arch Linux).
 - [`omarchy/`](omarchy/) — customizações do Omarchy (temas)
 - [`scripts/`](scripts/) — scripts utilitários (ex: `work.sh`)
 - [`system/`](system/) — configs do sistema (ex: `logind.conf.d/`)
+- [`vps/`](vps/) — setup de VPS Ubuntu (Hostinger): hardening SSH, ufw, fail2ban, swap, mise
 
 Cada subpasta tem seu próprio `README.md` descrevendo os arquivos.

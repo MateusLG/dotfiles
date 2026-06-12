@@ -1,0 +1,5 @@
+# ~/.config/mise/config.toml — runtimes globais geridos pelo mise
+[tools]
+node = "lts"
+rust = "stable"
+uv = "latest"
