@@ -52,11 +52,27 @@ deploy_turmasunb() {
   health turmasunb http://127.0.0.1:8000/
 }
 
+deploy_albumcopa() {
+  log "album-copa / FALTINHA (FastAPI + Vite) — user dedicado em /srv"
+  sudo -u albumcopa env HOME=/srv/albumcopa bash -c '
+    set -e
+    cd /srv/albumcopa
+    git pull --ff-only
+    M="$HOME/.local/bin/mise"
+    ( cd backend && "$M" exec -- uv sync )
+    ( cd frontend && "$M" exec -- npm ci && "$M" exec -- npm run build )
+  '
+  sudo systemctl restart albumcopa
+  sleep 2
+  health albumcopa http://127.0.0.1:8001/api/health
+}
+
 case "${1:-}" in
   lgmateus)  deploy_lgmateus ;;
   turmasunb) deploy_turmasunb ;;
-  all)       deploy_lgmateus; deploy_turmasunb ;;
-  *) echo "uso: $(basename "$0") {lgmateus|turmasunb|all}" >&2; exit 1 ;;
+  albumcopa) deploy_albumcopa ;;
+  all)       deploy_lgmateus; deploy_turmasunb; deploy_albumcopa ;;
+  *) echo "uso: $(basename "$0") {lgmateus|turmasunb|albumcopa|all}" >&2; exit 1 ;;
 esac
 
 log "deploy concluído."
