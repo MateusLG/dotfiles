@@ -20,18 +20,20 @@ sudo sysctl --system >/dev/null
 
 echo "==> Pacotes"
 sudo DEBIAN_FRONTEND=noninteractive apt-get update -qq
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ufw fail2ban unattended-upgrades
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ufw fail2ban unattended-upgrades mosh
 
 echo "==> Hardening SSH (login só por chave)"
 # Pré-requisito: a chave pública do seu PC já em ~/.ssh/authorized_keys. NÃO desabilite
 # senha antes de testar login por chave numa sessão nova, sob risco de lockout.
 sudo install -m 644 "$DIR/etc/ssh/sshd_config.d/00-hardening.conf" /etc/ssh/sshd_config.d/00-hardening.conf
+sudo install -m 644 "$DIR/etc/ssh/sshd_config.d/10-keepalive.conf" /etc/ssh/sshd_config.d/10-keepalive.conf
 sudo sshd -t && sudo systemctl reload ssh
 
 echo "==> Firewall (ufw): só a 22, com rate-limit"
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 sudo ufw limit 22/tcp comment 'SSH rate-limited'
+sudo ufw allow 60000:60010/udp comment 'mosh'   # acesso mobile — ver mobile-claude.md
 sudo ufw --force enable
 
 echo "==> fail2ban (jail sshd)"

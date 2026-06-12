@@ -6,7 +6,9 @@ Usuário comum `mateus` no grupo `sudo`. Os arquivos espelham os caminhos reais 
 ## Conteúdo
 
 - [`setup.sh`](setup.sh) — script idempotente que reproduz todo o setup abaixo.
+- [`mobile-claude.md`](mobile-claude.md) — acesso ao Claude Code pelo celular (mosh + tmux + Termius).
 - `etc/ssh/sshd_config.d/00-hardening.conf` → `/etc/ssh/sshd_config.d/00-hardening.conf`
+- `etc/ssh/sshd_config.d/10-keepalive.conf` → `/etc/ssh/sshd_config.d/10-keepalive.conf`
 - `etc/fail2ban/jail.local` → `/etc/fail2ban/jail.local`
 - `etc/sysctl.d/99-swappiness.conf` → `/etc/sysctl.d/99-swappiness.conf`
 - `mise/config.toml` → `~/.config/mise/config.toml`
@@ -26,9 +28,16 @@ ganhamos dele lendo antes.
 
 ### Firewall (ufw)
 
-`default deny incoming`, `allow outgoing`, e só a `22/tcp` liberada com `LIMIT`
-(rate-limit: bloqueia IP com 6+ conexões em 30s). Não há arquivo versionado — as
-regras são aplicadas pelo `setup.sh`.
+`default deny incoming`, `allow outgoing`, a `22/tcp` liberada com `LIMIT`
+(rate-limit: bloqueia IP com 6+ conexões em 30s) e `60000:60010/udp` aberta pro mosh.
+Não há arquivo versionado — as regras são aplicadas pelo `setup.sh`.
+
+### Acesso mobile (mosh + tmux)
+
+Claude Code no celular de qualquer lugar via Termius. mosh (UDP) segura a troca de
+rede/sleep/IP; tmux mantém a sessão viva; keepalive (`10-keepalive.conf`) limpa
+conexões mortas do lado do servidor. Passo a passo do cliente em
+[`mobile-claude.md`](mobile-claude.md).
 
 ### Brute force (fail2ban)
 
