@@ -15,5 +15,6 @@ Configurações pessoais do meu setup (Omarchy / Hyprland em Arch Linux).
 - [`claude/`](claude/) — configurações do Claude Code (`settings.json`, skills, `CLAUDE.md`)
 - [`omarchy/`](omarchy/) — customizações do Omarchy (temas)
 - [`system/`](system/) — configs do sistema (ex: `logind.conf.d/`)
+- [`vps/`](vps/) — setup de VPS Ubuntu (Hostinger): hardening SSH, ufw, fail2ban, swap, mise
 
 Cada subpasta tem seu próprio `README.md` descrevendo os arquivos.
