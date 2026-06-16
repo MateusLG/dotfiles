@@ -5,7 +5,7 @@
 set -euo pipefail
 
 DIR=/var/backups/postgres
-DBS="turmasunb albumcopa"
+DBS="turmasunb albumcopa dotsmith"
 KEEP_DAYS=14
 TS=$(date +%Y%m%d-%H%M%S)
 

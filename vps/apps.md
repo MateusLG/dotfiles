@@ -1,12 +1,14 @@
 # apps self-hosted
 
-Três sites migrados do Railway pra esta VPS (junho/2026), atrás da Cloudflare.
+Apps self-hosted nesta VPS, atrás da Cloudflare (os três primeiros migrados do
+Railway em junho/2026; dotsmith foi desenvolvido direto na VPS).
 
 | App          | Stack                       | Porta | Serviço             | User (sistema) | Domínio              |
 |--------------|-----------------------------|-------|---------------------|----------------|----------------------|
 | lgmateus     | Next.js 16 (Node)           | 3000  | `lgmateus.service`  | `lgmateus`     | lgmateus.com         |
 | turmasunb    | FastAPI (Python)            | 8000  | `turmasunb.service` | `turmasunb`    | turmasunb.com        |
 | album-copa   | FastAPI + Vite (serve dist) | 8001  | `albumcopa.service` | `albumcopa`    | album.lgmateus.com   |
+| dotsmith     | FastAPI + Vite (serve dist) | 8002  | `dotsmith.service`  | `dotsmith`     | dotsmith.lglabs.tech |
 
 ## Isolamento (importante)
 
@@ -28,8 +30,8 @@ Os apps escutam só em `127.0.0.1`; quem publica é o nginx.
 ```
 navegador → Cloudflare (proxy laranja, TLS na borda)
           → VPS:443 nginx (Origin Certificate, Full strict)   [ufw: 80/443 só de IPs da CF]
-          → 127.0.0.1:{3000,8000,8001} app (systemd, user dedicado)
-          → Postgres local (turmasunb e album-copa)
+          → 127.0.0.1:{3000,8000,8001,8002} app (systemd, user dedicado)
+          → Postgres local (turmasunb, album-copa e dotsmith)
 ```
 
 ## Deploy
@@ -38,6 +40,7 @@ navegador → Cloudflare (proxy laranja, TLS na borda)
 deploy.sh lgmateus     # git pull + npm ci + build
 deploy.sh turmasunb    # git pull + uv pip install
 deploy.sh albumcopa    # git pull + uv sync (backend) + npm build (frontend)
+deploy.sh dotsmith     # git pull + uv sync + alembic upgrade + npm build (web/)
 deploy.sh all
 ```
 
@@ -58,8 +61,11 @@ journalctl -u albumcopa -f
   versionados** (a key é segredo). Regenerar em: painel Cloudflare → SSL/TLS → Origin
   Server → Create Certificate.
 - `lgmateus.{crt,key}` é **wildcard `*.lgmateus.com`** → cobre `album.lgmateus.com` sem
-  cert novo. `turmasunb.{crt,key}` cobre `turmasunb.com`.
-- DNS: registros A → IP da VPS (`2.25.202.113`), **proxied**. `album` é um A próprio.
+  cert novo. `turmasunb.{crt,key}` cobre `turmasunb.com`. `lglabs.tech.{crt,key}` é
+  **wildcard `*.lglabs.tech`** → cobre `dotsmith.lglabs.tech`.
+- DNS: registros A → IP da VPS (`2.25.202.113`), **proxied**. `album` e `dotsmith` são
+  A próprios (subdomínios). `lglabs.tech` é uma zona separada na Cloudflare; lembrar de
+  ligar **Authenticated Origin Pulls** (Global) nela também.
 - **Origem fechada em duas camadas:** `ufw` libera `80/443` só das faixas da Cloudflare
   (`bin/ufw-cloudflare.sh`) **e** os vhosts exigem o cert de cliente da CF via
   Authenticated Origin Pulls (`ssl_verify_client on`). Acesso direto na origem → `400`.
@@ -74,13 +80,26 @@ journalctl -u albumcopa -f
 - **album-copa**: db/role `albumcopa` (tabelas `usuario`/`figurinha`/`colecao_usuario`/
   `audit_log`), schema via **alembic** (`alembic upgrade head`). Auth é só header
   `X-Username` (sem senha). `.env` em `/srv/albumcopa/backend/.env` (só `DATABASE_URL`).
+- **dotsmith**: db/role `dotsmith` (tabelas `agents`/`games`/`game_agents`/`generations`/
+  `balance_snapshots`), schema via **alembic**. `.env` em `/srv/dotsmith/backend/.env`
+  (auth de sessão: `ADMIN_USER`/`ADMIN_PASSWORD` + `SECRET_KEY`; `INGEST_TOKEN`; secrets
+  Pixellab `PIXELLAB_SECRET_TIER2/3`). Particularidades vs os outros:
+  - Repo **privado** (`Dotsmith-Studios/dotsmith-orchestrator`) → puxa por **deploy key
+    SSH** (read-only) em `/srv/dotsmith/.ssh/id_ed25519`, não por HTTPS anônimo.
+  - Secrets do Pixellab são lidos de **env** (`os.getenv`); o `config.py` faz
+    `load_dotenv()` com path absoluto, então **não** precisa de `EnvironmentFile` na unit.
+  - Timer `dotsmith-pixellab-snapshot.timer` roda o job de saldo 1x/dia (06:00); no-op
+    enquanto `PIXELLAB_SECRET_*` estiverem vazios.
+  - Dev foi feito na própria VPS → o db já existia; no deploy o schema foi **resetado**
+    (`DROP SCHEMA public CASCADE`) porque a migration da Fase 2 é fresh (`down_revision=None`).
 - Migração Railway→local sempre por `\copy` (Railway PG18 vs cliente PG16 local não faz
   `pg_dump` cross-version). Lembrar de resetar as sequences após carregar dados:
   ```sh
   psql "$RAILWAY" -c "\copy <tabela> TO STDOUT" | psql "$LOCAL" -c "\copy <tabela> FROM STDIN"
   ```
-- **Backup**: dump diário dos dois bancos via `bin/pg-backup.sh` + `pg-backup.timer`
-  (retenção 14 dias em `/var/backups/postgres/`). Ver [`README.md`](README.md).
+- **Backup**: dump diário dos bancos (`turmasunb`, `albumcopa`, `dotsmith`) via
+  `bin/pg-backup.sh` + `pg-backup.timer` (retenção 14 dias em `/var/backups/postgres/`).
+  Ver [`README.md`](README.md).
 
 ## Reproduzir do zero (resumo)
 
