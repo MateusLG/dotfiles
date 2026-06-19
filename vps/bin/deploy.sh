@@ -67,28 +67,12 @@ deploy_albumcopa() {
   health albumcopa http://127.0.0.1:8001/api/health
 }
 
-deploy_dotsmith() {
-  log "dotsmith orchestrator (FastAPI + Vite) — user dedicado em /srv"
-  sudo -u dotsmith env HOME=/srv/dotsmith bash -c '
-    set -e
-    cd /srv/dotsmith
-    git pull --ff-only
-    M="$HOME/.local/bin/mise"
-    ( cd backend && "$M" exec -- uv sync && "$M" exec -- uv run alembic upgrade head )
-    ( cd web && "$M" exec -- npm ci && "$M" exec -- npm run build )
-  '
-  sudo systemctl restart dotsmith
-  sleep 2
-  health dotsmith http://127.0.0.1:8002/api/health
-}
-
 case "${1:-}" in
   lgmateus)  deploy_lgmateus ;;
   turmasunb) deploy_turmasunb ;;
   albumcopa) deploy_albumcopa ;;
-  dotsmith)  deploy_dotsmith ;;
-  all)       deploy_lgmateus; deploy_turmasunb; deploy_albumcopa; deploy_dotsmith ;;
-  *) echo "uso: $(basename "$0") {lgmateus|turmasunb|albumcopa|dotsmith|all}" >&2; exit 1 ;;
+  all)       deploy_lgmateus; deploy_turmasunb; deploy_albumcopa ;;
+  *) echo "uso: $(basename "$0") {lgmateus|turmasunb|albumcopa|all}" >&2; exit 1 ;;
 esac
 
 log "deploy concluído."
