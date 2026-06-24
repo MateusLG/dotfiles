@@ -9,6 +9,7 @@ Variante do `zsh/zshrc`: remove o que depende de ambiente gráfico Linux (FortiC
 - `zshrc` — vai em `~/.zshrc`. Igual ao `zsh/zshrc` em estrutura (history, completion, aliases `eza`/`fzf`/`zoxide`, git, plugins, p10k), com as diferenças:
   - **Removido:** `OMARCHY_PATH`, loop de `fns/*`, `/opt/forticlient` no PATH, alias `fortinet`, alias `rdp-embratur`, branch `xterm-kitty` do `ff`.
   - **Adaptado:** `open()` usa `wslview` (do AUR `wslu`) com fallback `explorer.exe`.
+  - **Adicionado:** função `claude-sessions [N]` — lista as N sessões mais recentes do Claude Code (todos os projetos) com data, projeto, ID e a primeira mensagem; para retomar, `cd` no projeto e `claude --resume <id>` (o `--resume` é por diretório). Requer `python3`.
 - `install-nerdfonts.ps1` — script PowerShell que roda **no host Windows** pra instalar a Nerd Font `MesloLGS NF` (recomendada pelo p10k) pro usuário atual. Idempotente, sem admin.
 
 O `p10k.zsh` é reaproveitado do `zsh/`: instala via symlink `ln -sf ~/dotfiles/zsh/p10k.zsh ~/.p10k.zsh`.

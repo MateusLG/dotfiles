@@ -79,6 +79,52 @@ alias r='rails'
 alias t='tmux attach || tmux new -s Work'
 n() { if [ "$#" -eq 0 ]; then command nvim . ; else command nvim "$@"; fi; }
 
+# Lista as sessões recentes do Claude Code (todos os projetos) com data,
+# projeto, ID e a primeira mensagem. Uso: claude-sessions [N]  (default 15).
+# Pra retomar: cd no projeto e `claude --resume <id>`.
+claude-sessions() {
+  python3 - "${1:-15}" <<'PY'
+import sys, os, json, glob, time
+n = int(sys.argv[1]) if len(sys.argv) > 1 else 15
+home = os.path.expanduser("~")
+files = glob.glob(os.path.join(home, ".claude/projects/*/*.jsonl"))
+files.sort(key=os.path.getmtime, reverse=True)
+
+def parse(path):
+    cwd = msg = None
+    with open(path, encoding="utf-8", errors="ignore") as fh:
+        for line in fh:
+            try:
+                d = json.loads(line)
+            except Exception:
+                continue
+            if cwd is None and d.get("cwd"):
+                cwd = d["cwd"]
+            if msg is None and d.get("type") == "user":
+                c = d.get("message", {}).get("content", "")
+                if isinstance(c, list):
+                    c = " ".join(x.get("text", "") for x in c
+                                 if isinstance(x, dict) and x.get("type") == "text")
+                if isinstance(c, str):
+                    c = " ".join(c.split())
+                    if c and not c.startswith("<"):
+                        msg = c
+            if cwd and msg:
+                break
+    return cwd, msg
+
+for p in files[:n]:
+    cwd, msg = parse(p)
+    sid = os.path.basename(p)[:-6]
+    when = time.strftime("%d/%m %H:%M", time.localtime(os.path.getmtime(p)))
+    proj = (cwd or os.path.dirname(p)).replace(home, "~")
+    print(f"\033[2m{when}\033[0m  \033[1;36m{proj}\033[0m")
+    print(f"  \033[2m{sid}\033[0m")
+    print(f"  {msg[:100]}" if msg else "  \033[2m(sem mensagem de texto)\033[0m")
+    print()
+PY
+}
+
 alias g='git'
 alias gcm='git commit -m'
 alias gcam='git commit -a -m'
