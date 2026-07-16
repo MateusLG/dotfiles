@@ -68,6 +68,11 @@ open() (
   fi
 )
 
+# WSL: abrir arquivo/pasta no Chrome do Windows (converte o path Linux -> Windows).
+chrome() (
+  cmd.exe /c start chrome "$(wslpath -w "${1:-.}")" >/dev/null 2>&1
+)
+
 alias ..='cd ..'
 alias ...='cd ../..'
 alias ....='cd ../../..'
