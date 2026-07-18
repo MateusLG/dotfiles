@@ -27,6 +27,7 @@
 - Para ações caras ou irreversíveis (gastar crédito em API paga, regerar artefatos em lote, apagar dados, force-push), **pedir confirmação explícita**.
 - Comandos interativos (login, chave de API, `gcloud auth`, etc): pedir pro usuário rodar com o prefixo `!`.
 - Commits pequenos, atômicos e coerentes. Não misturar refactor com feature.
+- **Commit pós-validação:** quando uma feature for implementada e o usuário **validar** que funciona, commitar ao final sem esperar pedido (evita trabalho solto acumulando entre sessões). Antes da validação, não commitar. Push e PR continuam só sob pedido.
 - **Nunca usar `--no-verify`** nem pular lint/type-check/testes pra "passar logo".
 - **Nunca adicionar `Co-Authored-By: Claude`** nos commits (`includeCoAuthoredBy` está desligado em `settings.json`).
 
@@ -71,7 +72,7 @@ Referências: apple.com, samsung.com, claude.com, anthropic.com.
 ## 8. O que NÃO fazer
 
 - Não tomar ações destrutivas (force push, `reset --hard`, `rm -rf`, drop de tabela) sem confirmação explícita do usuário.
-- Não criar PRs/commits/pushes sem ser pedido.
+- Não criar PRs/pushes sem ser pedido. Commit sem pedido só no caso da regra de commit pós-validação (§3).
 - Não usar tom corporativo, emojis ou exclamações em respostas.
 - Não responder com listas gigantes/headers quando uma frase resolve.
 - Não terminar resposta com "resumo do que fiz" se o diff já mostra — ele lê o diff.
@@ -86,7 +87,7 @@ Referências: apple.com, samsung.com, claude.com, anthropic.com.
 ## 10. Dúvidas frequentes
 
 - "Roda os testes?" → sim, sempre antes de marcar tarefa como concluída.
-- "Faço commit?" → **não**, salvo se o usuário pediu explicitamente.
+- "Faço commit?" → **sim**, se a feature foi validada pelo usuário (regra do §3). Fora disso, só se pedido.
 - "Crio um README?" → **não**, salvo se o usuário pediu.
 - "Posso instalar essa lib nova?" → pergunta antes.
 
