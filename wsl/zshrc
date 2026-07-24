@@ -78,6 +78,7 @@ alias ...='cd ../..'
 alias ....='cd ../../..'
 
 alias c='opencode'
+alias cursor='agent'
 alias cx='printf "\033[2J\033[3J\033[H" && claude --allow-dangerously-skip-permissions'
 alias d='docker'
 alias r='rails'
