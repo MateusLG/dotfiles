@@ -82,6 +82,12 @@ alias cx='printf "\033[2J\033[3J\033[H" && claude --allow-dangerously-skip-permi
 alias d='docker'
 alias r='rails'
 alias t='tmux attach || tmux new -s Work'
+# Roda o Mowgul no Godot do host Windows (GPU real; o godot47 do WSL só tem llvmpipe)
+alias mowgul='/mnt/c/Users/Nathan/Downloads/godot47-win/Godot_v4.7.1-stable_win64_console.exe --path "\\\\wsl.localhost\\archlinux\\home\\mateuslira\\dotsmith\\mowgul"'
+# Roda o Icebite no Godot do host Windows (mesmo esquema do mowgul)
+alias icebite='/mnt/c/Users/Nathan/Downloads/godot47-win/Godot_v4.7.1-stable_win64_console.exe --path "\\\\wsl.localhost\\archlinux\\home\\mateuslira\\dotsmith\\icebite"'
+# Roda o Pingado no Godot do host Windows (mesmo esquema do mowgul)
+alias pingado='/mnt/c/Users/Nathan/Downloads/godot47-win/Godot_v4.7.1-stable_win64_console.exe --path "\\\\wsl.localhost\\archlinux\\home\\mateuslira\\dotsmith\\pingado"'
 n() { if [ "$#" -eq 0 ]; then command nvim . ; else command nvim "$@"; fi; }
 
 # Lista as sessões recentes do Claude Code (todos os projetos) com data,
