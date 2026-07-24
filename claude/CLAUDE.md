@@ -9,7 +9,7 @@
 
 - Desenvolvedor fullstack com foco em **backend**, brasileiro.
 - Setup: **Arch Linux + Hyprland + Omarchy**, tema `lg-umbra`. Editor principal: **Neovim**. Escreve **C** com gosto, usa **LaTeX** para documentos.
-- Stacks recorrentes: **Python (FastAPI, Typer, Pydantic v2)**, **TypeScript / Next.js**, **PostgreSQL**, deploy em **Railway**.
+- Stacks recorrentes: **Python (FastAPI, Typer, Pydantic v2)**, **TypeScript / Next.js**, **PostgreSQL**, deploy em **VPS própria** (Node atrás de proxy reverso, gerenciado por systemd/pm2 — migrou do Railway).
 - Terceiriza redação de texto longo para IA — gosta de respostas que ele possa colar/usar direto.
 
 ## 2. Idioma e tom
