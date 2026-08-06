@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Deploy dos apps self-hosted na VPS: git pull + build (+ restart do systemd quando houver serviço).
-# Uso: deploy.sh {lgmateus|turmasunb|albumcopa|os48|ericsongomes-site|ericsongomes-calculadora|ericsongomes|all}
+# Uso: deploy.sh {lgmateus|turmasunb|albumcopa|os48|ericsongomes|all}
 #
 # Apps com processo persistente rodam como user de sistema dedicado em /srv/<app>, com mise
 # proprio; o deploy faz git pull + build como esse user (sudo -u) e reinicia o servico.
 # ericsongomes.com.br e static export (sem processo, sem user dedicado): git pull + build
-# como o proprio mateus em /srv/ericsongomes/<projeto>-src, depois rsync --delete pro
-# subdiretorio certo de /var/www/ericsongomes/ (nunca no pai — os dois projetos sao irmaos).
+# como o proprio mateus em /srv/ericsongomes/site-src, depois rsync --delete pro
+# subdiretorio certo de /var/www/ericsongomes/ (nunca no pai — site e calculadora sao
+# irmaos ali). Site e calculadora vivem no mesmo repo desde o subtree merge da calculadora
+# em calculadora/, entao um comando so cobre os dois.
 # os48 (OS 0048 CREA, servico `gestao`) e o unico que faz pull/build como mateus: o repo e privado e a org
 # KodiumAI bloqueia deploy key, entao quem autentica no GitHub e o gh do mateus (ver funcao).
 set -euo pipefail
@@ -104,25 +106,22 @@ deploy_os48() {
   health gestao http://127.0.0.1:8002/api/health
 }
 
-deploy_ericsongomes_site() {
-  log "ericsongomes.com.br / (Next.js static export) — sem processo, sem user dedicado"
+deploy_ericsongomes() {
+  log "ericsongomes.com.br (Next.js static export) — sem processo, sem user dedicado"
   cd /srv/ericsongomes/site-src
   git pull --ff-only
+  # A calculadora e um projeto Next proprio dentro de calculadora/, que veio pro repo do site
+  # por subtree merge. Confere antes de publicar qualquer coisa: sem isso o site ia pro ar e o
+  # deploy morria na metade, deixando /calculadora/ na versao velha sem dizer por que.
+  [[ -d calculadora ]] || { echo "ERRO: calculadora/ nao existe em site-src — o subtree merge ja foi pro origin/main?" >&2; exit 1; }
   M="$HOME/.local/bin/mise"
   "$M" exec -- npm ci
   "$M" exec -- npm run build
   rsync -a --delete out/ /var/www/ericsongomes/site/
   health_static "https://ericsongomes.com.br/"
-}
-
-deploy_ericsongomes_calculadora() {
-  log "ericsongomes.com.br/calculadora (Next.js static export) — sem processo, sem user dedicado"
-  cd /srv/ericsongomes/calculadora-src
-  git pull --ff-only
-  M="$HOME/.local/bin/mise"
-  "$M" exec -- npm ci
-  "$M" exec -- npm run build
-  rsync -a --delete out/ /var/www/ericsongomes/calculadora/
+  # package.json e build sao separados; o out/ da calculadora vai pro subdiretorio irmao em /var/www.
+  ( cd calculadora && "$M" exec -- npm ci && "$M" exec -- npm run build )
+  rsync -a --delete calculadora/out/ /var/www/ericsongomes/calculadora/
   health_static "https://ericsongomes.com.br/calculadora/"
 }
 
@@ -131,11 +130,9 @@ case "${1:-}" in
   turmasunb)              deploy_turmasunb ;;
   albumcopa)              deploy_albumcopa ;;
   os48)                   deploy_os48 ;;
-  ericsongomes-site)         deploy_ericsongomes_site ;;
-  ericsongomes-calculadora)  deploy_ericsongomes_calculadora ;;
-  ericsongomes)           deploy_ericsongomes_site; deploy_ericsongomes_calculadora ;;
-  all)       deploy_lgmateus; deploy_turmasunb; deploy_albumcopa; deploy_os48; deploy_ericsongomes_site; deploy_ericsongomes_calculadora ;;
-  *) echo "uso: $(basename "$0") {lgmateus|turmasunb|albumcopa|os48|ericsongomes-site|ericsongomes-calculadora|ericsongomes|all}" >&2; exit 1 ;;
+  ericsongomes)           deploy_ericsongomes ;;
+  all)       deploy_lgmateus; deploy_turmasunb; deploy_albumcopa; deploy_os48; deploy_ericsongomes ;;
+  *) echo "uso: $(basename "$0") {lgmateus|turmasunb|albumcopa|os48|ericsongomes|all}" >&2; exit 1 ;;
 esac
 
 log "deploy concluído."
