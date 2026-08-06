@@ -44,6 +44,26 @@ deploy.sh all
 (`bin/deploy.sh`; symlink `~/.local/bin/deploy`.) O script roda o build **como o user
 dedicado** (`sudo -u <app>` com o mise daquele user) e reinicia o serviço + health check.
 
+### Autenticação no GitHub
+
+Todo repo aqui é privado, e o user de sistema do app não tem credencial nenhuma — por isso
+o `git pull` de lgmateus/turmasunb/albumcopa ficou quebrado até **2026-08-05**, pedindo
+usuário e senha (que o GitHub não aceita mais em HTTPS desde 2021).
+
+Cada um desses apps tem hoje **deploy key read-only própria** em `/srv/<app>/.ssh/id_ed25519`,
+registrada no repo como `vps-srv1752180-<app>`, com o remote em SSH. O pull continua rodando
+como o user do app — nenhum app precisa (nem enxerga) a credencial do `mateus`.
+
+```sh
+sudo -u <app> ssh-keygen -t ed25519 -N '' -f /srv/<app>/.ssh/id_ed25519 -C vps-srv1752180-<app>
+gh repo deploy-key add /srv/<app>/.ssh/id_ed25519.pub -R <owner/repo> -t vps-srv1752180-<app>
+sudo -u <app> git -C /srv/<app> remote set-url origin git@github.com:<owner/repo>.git
+```
+
+Exceção: **os48** autentica pelo `gh` do `mateus` (pull e build como ele; o serviço `gestao`
+só lê o diretório). Era a única saída quando a org KodiumAI bloqueava deploy key — hoje ela
+permite, então dá pra migrar pro padrão acima quando der.
+
 ## Logs / status
 
 ```sh

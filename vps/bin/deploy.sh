@@ -9,8 +9,20 @@
 # subdiretorio certo de /var/www/ericsongomes/ (nunca no pai — site e calculadora sao
 # irmaos ali). Site e calculadora vivem no mesmo repo desde o subtree merge da calculadora
 # em calculadora/, entao um comando so cobre os dois.
-# os48 (OS 0048 CREA, servico `gestao`) e o unico que faz pull/build como mateus: o repo e privado e a org
-# KodiumAI bloqueia deploy key, entao quem autentica no GitHub e o gh do mateus (ver funcao).
+#
+# AUTENTICACAO NO GITHUB (todo repo aqui e privado)
+# O user de sistema do app nao tem credencial nenhuma, entao ate 2026-08-05 o `git pull` de
+# lgmateus/turmasunb/albumcopa morria pedindo usuario e senha — que o GitHub nao aceita mais
+# em HTTPS desde 2021. Como cada um resolve hoje:
+#   - lgmateus, turmasunb, albumcopa: deploy key read-only propria por app em
+#     /srv/<app>/.ssh/id_ed25519, registrada no repo como `vps-srv1752180-<app>`. Remote e SSH.
+#     O pull segue rodando como o user do app — ninguem precisa da credencial do mateus.
+#   - os48: segue no gh do mateus (pull/build como ele, servico `gestao` so le o diretorio).
+#     Era a unica saida quando a org KodiumAI bloqueava deploy key; hoje ela permite
+#     (`deploy_keys_enabled_for_repositories`), entao da pra migrar pro padrao acima se quiser.
+# Chave nova, se um dia precisar recriar:
+#   sudo -u <app> ssh-keygen -t ed25519 -N '' -f /srv/<app>/.ssh/id_ed25519 -C vps-srv1752180-<app>
+#   gh repo deploy-key add /srv/<app>/.ssh/id_ed25519.pub -R <owner/repo> -t vps-srv1752180-<app>
 set -euo pipefail
 
 log() { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
