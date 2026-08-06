@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-# Deploy dos apps self-hosted na VPS: git pull + build + restart do serviço systemd.
-# Uso: deploy.sh {lgmateus|turmasunb|all}
+# Deploy dos apps self-hosted na VPS: git pull + build (+ restart do systemd quando houver serviço).
+# Uso: deploy.sh {lgmateus|turmasunb|albumcopa|os48|ericsongomes-site|ericsongomes-calculadora|ericsongomes|all}
 #
-# Cada app roda como user de sistema dedicado em /srv/<app>, com mise proprio.
-# O deploy faz git pull + build como esse user (sudo -u) e reinicia o servico.
+# Apps com processo persistente rodam como user de sistema dedicado em /srv/<app>, com mise
+# proprio; o deploy faz git pull + build como esse user (sudo -u) e reinicia o servico.
+# ericsongomes.com.br e static export (sem processo, sem user dedicado): git pull + build
+# como o proprio mateus em /srv/ericsongomes/<projeto>-src, depois rsync --delete pro
+# subdiretorio certo de /var/www/ericsongomes/ (nunca no pai — os dois projetos sao irmaos).
+# os48 (OS 0048 CREA, servico `gestao`) e o unico que faz pull/build como mateus: o repo e privado e a org
+# KodiumAI bloqueia deploy key, entao quem autentica no GitHub e o gh do mateus (ver funcao).
 set -euo pipefail
 
 log() { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
@@ -21,6 +26,17 @@ health() {
   case "$code" in
     2*|3*) ;;
     *) echo "ERRO: $svc respondeu $code" >&2; exit 1 ;;
+  esac
+}
+
+# health_static <url> — sem systemd pra checar (site estático): só confirma HTTP 2xx/3xx
+health_static() {
+  local url="$1" code
+  code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" || true)
+  echo "health $url: HTTP $code"
+  case "$code" in
+    2*|3*) ;;
+    *) echo "ERRO: $url respondeu $code" >&2; exit 1 ;;
   esac
 }
 
@@ -67,12 +83,59 @@ deploy_albumcopa() {
   health albumcopa http://127.0.0.1:8001/api/health
 }
 
+deploy_os48() {
+  log "OS 0048 CREA / servico gestao (FastAPI + Vite) — demo em crea.lglabs.tech"
+  # O clone e o build sao do mateus (o repo e privado e a org bloqueia deploy key, entao
+  # a credencial e o gh do proprio mateus); o servico segue rodando como o user gestao,
+  # que so le o diretorio — o processo nao consegue alterar o proprio codigo.
+  # O .env fica fora do git, dono mateus:gestao 640 (o app precisa ler, o resto nao).
+  cd /srv/gestao/repo
+  git pull --ff-only
+  M="$HOME/.local/bin/mise"
+  ( cd gestao/backend && "$M" exec -- uv sync --no-dev )
+  ( cd gestao/frontend && "$M" exec -- npm ci && "$M" exec -- npm run build )
+  # dump antes das migrations: o banco da demo tem dado que o cliente esta validando,
+  # e o pg-backup.timer nao cobre crea_demo (retencao de 14 dias apaga estes tambem).
+  sudo -u postgres pg_dump -Fc crea_demo \
+    -f "/var/backups/postgres/crea_demo-pre-deploy-$(date +%Y%m%d-%H%M%S).dump"
+  ( cd gestao/backend && .venv/bin/alembic upgrade head )
+  sudo systemctl restart gestao
+  sleep 2
+  health gestao http://127.0.0.1:8002/api/health
+}
+
+deploy_ericsongomes_site() {
+  log "ericsongomes.com.br / (Next.js static export) — sem processo, sem user dedicado"
+  cd /srv/ericsongomes/site-src
+  git pull --ff-only
+  M="$HOME/.local/bin/mise"
+  "$M" exec -- npm ci
+  "$M" exec -- npm run build
+  rsync -a --delete out/ /var/www/ericsongomes/site/
+  health_static "https://ericsongomes.com.br/"
+}
+
+deploy_ericsongomes_calculadora() {
+  log "ericsongomes.com.br/calculadora (Next.js static export) — sem processo, sem user dedicado"
+  cd /srv/ericsongomes/calculadora-src
+  git pull --ff-only
+  M="$HOME/.local/bin/mise"
+  "$M" exec -- npm ci
+  "$M" exec -- npm run build
+  rsync -a --delete out/ /var/www/ericsongomes/calculadora/
+  health_static "https://ericsongomes.com.br/calculadora/"
+}
+
 case "${1:-}" in
-  lgmateus)  deploy_lgmateus ;;
-  turmasunb) deploy_turmasunb ;;
-  albumcopa) deploy_albumcopa ;;
-  all)       deploy_lgmateus; deploy_turmasunb; deploy_albumcopa ;;
-  *) echo "uso: $(basename "$0") {lgmateus|turmasunb|albumcopa|all}" >&2; exit 1 ;;
+  lgmateus)               deploy_lgmateus ;;
+  turmasunb)              deploy_turmasunb ;;
+  albumcopa)              deploy_albumcopa ;;
+  os48)                   deploy_os48 ;;
+  ericsongomes-site)         deploy_ericsongomes_site ;;
+  ericsongomes-calculadora)  deploy_ericsongomes_calculadora ;;
+  ericsongomes)           deploy_ericsongomes_site; deploy_ericsongomes_calculadora ;;
+  all)       deploy_lgmateus; deploy_turmasunb; deploy_albumcopa; deploy_os48; deploy_ericsongomes_site; deploy_ericsongomes_calculadora ;;
+  *) echo "uso: $(basename "$0") {lgmateus|turmasunb|albumcopa|os48|ericsongomes-site|ericsongomes-calculadora|ericsongomes|all}" >&2; exit 1 ;;
 esac
 
 log "deploy concluído."
