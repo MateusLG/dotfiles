@@ -8,9 +8,7 @@ Apps self-hosted nesta VPS, atrás da Cloudflare (migrados do Railway em junho/2
 | turmasunb    | FastAPI (Python)            | 8000  | `turmasunb.service` | `turmasunb`    | turmasunb.com        |
 | album-copa   | FastAPI + Vite (serve dist) | 8001  | `albumcopa.service` | `albumcopa`    | album.lgmateus.com   |
 | os48 / CREA  | FastAPI + Vite              | 8002  | `gestao.service`    | `gestao`       | crea.lglabs.tech     |
-| discovery    | Rails 8 API + Next.js       | 8003 / 3001 | `discovery-api` + `discovery-web` | `discovery` | discovery.lgmateus.com |
 | ericsongomes | Next.js (static export)     | —     | — (nginx serve)     | — (build do `mateus`) | ericsongomes.com.br |
-| plataforma   | Next + Agent SDK (docker)   | 8020  | — (docker compose)  | — (compose do `mateus`) | studio.kodium.ai |
 
 ## Isolamento (importante)
 
@@ -32,8 +30,8 @@ Os apps escutam só em `127.0.0.1`; quem publica é o nginx.
 ```
 navegador → Cloudflare (proxy laranja, TLS na borda)
           → VPS:443 nginx (Origin Certificate, Full strict)   [ufw: 80/443 só de IPs da CF]
-          → 127.0.0.1:{3000,8000,8001,8002,8003,3001,8020} app (systemd, user dedicado)
-          → Postgres local (turmasunb, album-copa, gestao/crea_demo, discovery/kodeone)
+          → 127.0.0.1:{3000,8000,8001,8002} app (systemd, user dedicado)
+          → Postgres local (turmasunb, album-copa, gestao/crea_demo)
 ```
 
 ## Deploy
@@ -43,10 +41,8 @@ deploy lgmateus       # git pull + npm ci + build
 deploy turmasunb      # git pull + uv pip install
 deploy albumcopa      # git pull + uv sync (backend) + npm build (frontend)
 deploy os48           # git pull + uv sync + dump do banco + alembic + build
-deploy discovery      # git pull + bundle + pnpm build + dump + db:migrate (api e web)
 deploy ericsongomes   # git pull + build + rsync pro /var/www (site e calculadora)
-deploy plataforma     # git pull + docker compose up -d --build web
-deploy all            # tudo menos plataforma
+deploy all            # todos acima
 ```
 
 (`bin/deploy.sh`; symlink `~/.local/bin/deploy`.) O script roda o build **como o user
@@ -55,7 +51,7 @@ dedicado** (`sudo -u <app>` com o mise daquele user) e reinicia o serviço + hea
 ### Autenticação no GitHub
 
 Todo repo aqui é privado, e o user de sistema do app não tem credencial nenhuma — por isso
-o `git pull` de lgmateus/turmasunb/albumcopa/discovery ficou quebrado até **2026-08-05**,
+o `git pull` de lgmateus/turmasunb/albumcopa ficou quebrado até **2026-08-05**,
 pedindo usuário e senha (que o GitHub não aceita mais em HTTPS desde 2021).
 
 Cada um desses apps tem hoje **deploy key read-only própria** em `/srv/<app>/.ssh/id_ed25519`,
@@ -72,16 +68,11 @@ Exceção: **os48** autentica pelo `gh` do `mateus` (pull e build como ele; o se
 só lê o diretório). Era a única saída quando a org KodiumAI bloqueava deploy key — hoje ela
 permite, então dá pra migrar pro padrão acima quando der.
 
-O `discovery` aborta o deploy se houver commit local não publicado ou working tree sujo:
-`/srv/discovery/app` também é diretório de desenvolvimento, e o deploy não mexe em trabalho
-que não está no `origin/main`.
-
 ## Logs / status
 
 ```sh
-systemctl status lgmateus turmasunb albumcopa gestao discovery-api discovery-web
+systemctl status lgmateus turmasunb albumcopa gestao
 journalctl -u albumcopa -f
-docker compose -f ~/plataforma-ia/docker-compose.yml logs -f web   # plataforma
 ```
 
 ## TLS / Cloudflare

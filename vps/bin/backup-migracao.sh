@@ -12,7 +12,7 @@ DEST=/home/mateus/vps-backup-$STAMP
 WORK=$DEST/.staging
 LOG=$DEST/backup.log
 
-APPS=(albumcopa turmasunb lgmateus gestao discovery-api discovery-web)
+APPS=(albumcopa turmasunb lgmateus gestao)
 DOCKER_CT=(hbbs hbbr)
 
 log() { echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOG"; }
@@ -86,13 +86,13 @@ systemctl list-unit-files --state=enabled --no-pager --no-legend > "$INV/service
 sudo ufw status verbose > "$INV/ufw.txt" 2>&1 || true
 sudo fail2ban-client status sshd > "$INV/fail2ban.txt" 2>&1 || true
 df -h > "$INV/disk.txt"
-getent passwd | awk -F: '$3>=1000 || $1 ~ /^(albumcopa|turmasunb|lgmateus|discovery|gestao|minecraft|simmer)$/' > "$INV/users.txt"
-getent group | grep -E "albumcopa|turmasunb|lgmateus|discovery|gestao|minecraft|mateus|docker|sudo" > "$INV/groups.txt"
+getent passwd | awk -F: '$3>=1000 || $1 ~ /^(albumcopa|turmasunb|lgmateus|gestao|minecraft|simmer)$/' > "$INV/users.txt"
+getent group | grep -E "albumcopa|turmasunb|lgmateus|gestao|minecraft|mateus|docker|sudo" > "$INV/groups.txt"
 ~/.local/bin/mise ls > "$INV/mise.txt" 2>&1 || true
 { sudo docker ps -a --format '{{.Names}}\t{{.Image}}\t{{.Ports}}'; echo;
   sudo docker images --format '{{.Repository}}:{{.Tag}}'; echo;
   sudo docker volume ls; } > "$INV/docker.txt" 2>&1 || true
-for u in root mateus albumcopa turmasunb lgmateus discovery gestao minecraft; do
+for u in root mateus albumcopa turmasunb lgmateus gestao minecraft; do
   echo "## $u"; sudo crontab -u "$u" -l 2>/dev/null || echo "(vazio)"
 done > "$INV/crontabs.txt"
 { echo "# porta -> processo"; sudo ss -tlnp; } > "$INV/listening-ports.txt" 2>&1 || true
@@ -100,7 +100,7 @@ done > "$INV/crontabs.txt"
 # repos: onde cada codigo vive, para reclonar no destino
 {
   for d in /home/mateus/dotfiles /home/mateus/album-copa /home/mateus/OS0048-Modulo-Gestao-CREA \
-           /home/mateus/site-ericson /home/mateus/v2discovery /home/mateus/kodeone-recovery; do
+           /home/mateus/site-ericson; do
     [ -d "$d/.git" ] || continue
     printf '%s\n  remote: %s\n  branch: %s\n  head:   %s\n' "$d" \
       "$(git -C "$d" remote get-url origin 2>/dev/null)" \
@@ -108,7 +108,7 @@ done > "$INV/crontabs.txt"
       "$(git -C "$d" rev-parse HEAD 2>/dev/null)"
   done
   for p in albumcopa:/srv/albumcopa lgmateus:/srv/lgmateus turmasunb:/srv/turmasunb \
-           gestao:/srv/gestao/repo discovery:/srv/discovery/app mateus:/srv/ericsongomes/site-src; do
+           gestao:/srv/gestao/repo mateus:/srv/ericsongomes/site-src; do
     u=${p%%:*}; d=${p##*:}
     [ -d "$d/.git" ] || continue
     printf '%s\n  remote: %s\n  branch: %s\n  head:   %s\n' "$d" \
@@ -154,12 +154,11 @@ while IFS= read -r f; do
   sudo cp -a "$f" "$SEC/$rel"
 done < <(sudo find /srv /home/mateus -maxdepth 5 -name '.env' \
            -not -path '*/node_modules/*' -not -path '*/.venv/*' 2>/dev/null)
-sudo cp -a /etc/discovery.env "$SEC/etc-discovery.env"
 
 # chaves: a do mateus (github + authorized_keys do PC) e as deploy keys por app
 sudo mkdir -p "$SEC/ssh"
 sudo cp -a /home/mateus/.ssh "$SEC/ssh/mateus"
-for u in albumcopa turmasunb lgmateus discovery gestao; do
+for u in albumcopa turmasunb lgmateus gestao; do
   [ -d "/srv/$u/.ssh" ] && sudo cp -a "/srv/$u/.ssh" "$SEC/ssh/$u"
 done
 [ -d /srv/gestao/.ssh ] || true
