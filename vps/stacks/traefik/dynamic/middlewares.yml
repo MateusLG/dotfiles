@@ -1,0 +1,7 @@
+http:
+  middlewares:
+    redirect-to-apex:
+      redirectRegex:
+        regex: "^https://www\\.(.+)"
+        replacement: "https://${1}"
+        permanent: true

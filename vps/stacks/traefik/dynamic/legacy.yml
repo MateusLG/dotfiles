@@ -1,0 +1,47 @@
+## TEMPORARIO — rotas para as apps ainda em systemd.
+## Cada entrada e removida quando a app vira container (Tasks 8-11).
+## Este arquivo e apagado na Task 15.
+http:
+  routers:
+    legacy-lgmateus:
+      rule: "Host(`lgmateus.com`) || Host(`www.lgmateus.com`)"
+      entryPoints: [websecure]
+      service: legacy-lgmateus
+      tls:
+        options: cf-aop
+    legacy-turmasunb:
+      rule: "Host(`turmasunb.com`) || Host(`www.turmasunb.com`)"
+      entryPoints: [websecure]
+      service: legacy-turmasunb
+      tls:
+        options: cf-aop
+    legacy-albumcopa:
+      rule: "Host(`album.lgmateus.com`)"
+      entryPoints: [websecure]
+      service: legacy-albumcopa
+      tls:
+        options: cf-aop
+    legacy-gestao:
+      rule: "Host(`crea.lglabs.tech`)"
+      entryPoints: [websecure]
+      service: legacy-gestao
+      tls:
+        options: cf-aop-optional
+
+  services:
+    legacy-lgmateus:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:3000"
+    legacy-turmasunb:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:8000"
+    legacy-albumcopa:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:8001"
+    legacy-gestao:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:8002"

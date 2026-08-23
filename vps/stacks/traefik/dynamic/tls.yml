@@ -1,0 +1,25 @@
+tls:
+  options:
+    cf-aop:
+      minVersion: VersionTLS12
+      sniStrict: true
+      clientAuth:
+        caFiles:
+          - /certs/authenticated_origin_pull_ca.pem
+        clientAuthType: RequireAndVerifyClientCert
+    ## So para crea.lglabs.tech, ate ligar AOP na zona lglabs.tech no dashboard.
+    cf-aop-optional:
+      minVersion: VersionTLS12
+      clientAuth:
+        caFiles:
+          - /certs/authenticated_origin_pull_ca.pem
+        clientAuthType: VerifyClientCertIfGiven
+  certificates:
+    - certFile: /certs/lgmateus.crt
+      keyFile: /certs/lgmateus.key
+    - certFile: /certs/turmasunb.crt
+      keyFile: /certs/turmasunb.key
+    - certFile: /certs/lglabs.tech.crt
+      keyFile: /certs/lglabs.tech.key
+    - certFile: /certs/ericsongomes.crt
+      keyFile: /certs/ericsongomes.key
