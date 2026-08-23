@@ -322,7 +322,7 @@ no GitHub.
 - [ ] **Passo 1: Criar o PAT no GitHub (manual)**
 
 Em github.com → Settings → Developer settings → Fine-grained tokens. Escopo: só os repos
-`album-copa`, `lgmateus.com`, `site-ericson` e `KodiumAI/OS0048-Modulo-Gestao-CREA`.
+`album-copa`, `lgmateus.com`, `site-ericson` e `KodiumAI/OS48-CREA`.
 Permissão: `Contents: Read-only`. Validade: 1 ano.
 
 O `gh` não cria token fine-grained por CLI — este passo é obrigatoriamente pelo navegador.
@@ -1499,7 +1499,7 @@ Por último entre as apps porque é a que tem cliente validando dado. Repo em or
 (`KodiumAI`), e o único que ainda dependia do `gh` do `mateus` — aqui essa exceção morre.
 
 **Arquivos:**
-- Criar: `Dockerfile` no repo `KodiumAI/OS0048-Modulo-Gestao-CREA`
+- Criar: `Dockerfile` no repo `KodiumAI/OS48-CREA`
 - Criar: `vps/stacks/gestao/compose.yaml`
 
 **Interfaces:**
@@ -1546,7 +1546,7 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002"]
 - [ ] **Passo 2: Testar o build**
 
 ```bash
-cd /tmp && git clone git@github.com:KodiumAI/OS0048-Modulo-Gestao-CREA.git gestao-build
+cd /tmp && git clone git@github.com:KodiumAI/OS48-CREA.git gestao-build
 cd gestao-build && docker build -t gestao:test .
 ```
 
@@ -1558,7 +1558,7 @@ git add Dockerfile && git commit -m "add: dockerfile para deploy em container" &
 
 - [ ] **Passo 4: Build no Komodo**
 
-Nome `gestao`, repo `KodiumAI/OS0048-Modulo-Gestao-CREA`, provider `github.com`,
+Nome `gestao`, repo `KodiumAI/OS48-CREA`, provider `github.com`,
 builder `srv1`. O PAT da Task 3 precisa ter acesso a esse repo da org — se der 403, é aí.
 
 - [ ] **Passo 5: Migrar as 19 variáveis para Variables do Komodo**
