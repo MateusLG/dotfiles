@@ -1,0 +1,41 @@
+services:
+  turmasunb:
+    image: turmasunb:latest
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    ports:
+      ## Loopback pro nginx continuar apontando pra mesma porta ate o corte (Task 6).
+      - "127.0.0.1:8000:8000"
+    environment:
+      DATABASE_URL: ${TURMASUNB_DATABASE_URL}
+      SEMESTER: ${TURMASUNB_SEMESTER}
+      BACKUP_TOKEN: ${TURMASUNB_BACKUP_TOKEN}
+      BACKUP_PATH: /app/backups
+      BACKUP_INTERVAL_HOURS: 24
+      BACKUP_MAX_FILES: 14
+    volumes:
+      - turmasunb-backups:/app/backups
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - edge
+      - apps
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.turmasunb.rule=Host(`turmasunb.com`) || Host(`www.turmasunb.com`)
+      - traefik.http.routers.turmasunb.entrypoints=websecure
+      - traefik.http.routers.turmasunb.tls.options=cf-aop@file
+      - traefik.http.services.turmasunb.loadbalancer.server.port=8000
+
+volumes:
+  turmasunb-backups:
+
+networks:
+  edge:
+    external: true
+  apps:
+    external: true
