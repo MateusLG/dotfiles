@@ -1,0 +1,158 @@
+[[server]]
+name = "srv1"
+[server.config]
+enabled = true
+
+##
+
+[[stack]]
+name = "albumcopa"
+[stack.config]
+server = "srv1"
+auto_pull = false
+repo = "MateusLG/dotfiles"
+run_directory = "vps/stacks/albumcopa"
+environment = """
+ALBUMCOPA_DATABASE_URL=[[ALBUMCOPA_DATABASE_URL]]
+"""
+
+##
+
+[[stack]]
+name = "ericsongomes"
+[stack.config]
+server = "srv1"
+auto_pull = false
+repo = "MateusLG/dotfiles"
+run_directory = "vps/stacks/ericsongomes"
+
+##
+
+[[stack]]
+name = "lgmateus"
+[stack.config]
+server = "srv1"
+auto_pull = false
+repo = "MateusLG/dotfiles"
+run_directory = "vps/stacks/lgmateus"
+
+##
+
+[[stack]]
+name = "rustdesk"
+[stack.config]
+server = "srv1"
+repo = "MateusLG/dotfiles"
+run_directory = "vps/stacks/rustdesk"
+
+##
+
+[[stack]]
+name = "traefik"
+[stack.config]
+server = "srv1"
+repo = "MateusLG/dotfiles"
+run_directory = "vps/stacks/traefik"
+
+##
+
+[[stack]]
+name = "turmasunb"
+[stack.config]
+server = "srv1"
+auto_pull = false
+repo = "MateusLG/dotfiles"
+run_directory = "vps/stacks/turmasunb"
+environment = """
+TURMASUNB_DATABASE_URL=[[TURMASUNB_DATABASE_URL]]
+TURMASUNB_SEMESTER=[[TURMASUNB_SEMESTER]]
+TURMASUNB_BACKUP_TOKEN=[[TURMASUNB_BACKUP_TOKEN]]
+"""
+
+##
+
+[[build]]
+name = "albumcopa"
+[build.config]
+builder = "srv1"
+git_account = "MateusLG"
+repo = "MateusLG/album-copa"
+
+##
+
+[[build]]
+name = "ericsongomes"
+[build.config]
+builder = "srv1"
+git_account = "MateusLG"
+repo = "MateusLG/site-ericson"
+
+##
+
+[[build]]
+name = "lgmateus"
+[build.config]
+builder = "srv1"
+git_account = "MateusLG"
+repo = "MateusLG/lgmateus.com"
+
+##
+
+[[build]]
+name = "turmasunb"
+[build.config]
+builder = "srv1"
+repo = "MateusLG/turmasunb"
+
+##
+
+[[procedure]]
+name = "Backup Core Database"
+description = "Triggers the Core database backup at the scheduled time."
+tags = ["system"]
+config.schedule = "Every day at 01:00"
+
+[[procedure.config.stage]]
+name = "Stage 1"
+enabled = true
+executions = [
+  { execution.type = "BackupCoreDatabase", execution.params = {}, enabled = true }
+]
+
+##
+
+[[procedure]]
+name = "Global Auto Update"
+description = "Pulls and auto updates Stacks and Deployments using 'poll_for_updates' or 'auto_update'."
+tags = ["system"]
+config.schedule = "Every day at 03:00"
+
+[[procedure.config.stage]]
+name = "Stage 1"
+enabled = true
+executions = [
+  { execution.type = "GlobalAutoUpdate", execution.params.skip_auto_update = false, enabled = true }
+]
+
+##
+
+[[procedure]]
+name = "Rotate Server Keys"
+description = "Rotates all currently connected Server keys."
+tags = ["system"]
+config.schedule = "Every day at 06:00"
+
+[[procedure.config.stage]]
+name = "Stage 1"
+enabled = true
+executions = [
+  { execution.type = "RotateAllServerKeys", execution.params = {}, enabled = true }
+]
+
+##
+
+[[builder]]
+name = "srv1"
+[builder.config]
+type = "Server"
+params.servers = ["srv1"]
