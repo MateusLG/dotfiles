@@ -83,7 +83,7 @@ journalctl -u albumcopa -f
   Server → Create Certificate.
 - `lgmateus.{crt,key}` é **wildcard `*.lgmateus.com`** → cobre `album.lgmateus.com` sem
   cert novo. `turmasunb.{crt,key}` cobre `turmasunb.com`.
-- DNS: registros A → IP da VPS (`2.25.202.113`), **proxied**. `album` é A próprio
+- DNS: registros A → IP da VPS (`179.198.127.45`), **proxied**. `album` é A próprio
   (subdomínio).
 - **Origem fechada em duas camadas:** `ufw` libera `80/443` só das faixas da Cloudflare
   (`bin/ufw-cloudflare.sh`) **e** os vhosts exigem o cert de cliente da CF via
