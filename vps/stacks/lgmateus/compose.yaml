@@ -1,0 +1,30 @@
+services:
+  lgmateus:
+    image: lgmateus:latest
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /app/.next/cache
+    ports:
+      ## Loopback pro nginx continuar apontando pra mesma porta ate o corte (Task 6).
+      - "127.0.0.1:3000:3000"
+    environment:
+      NODE_ENV: production
+    networks:
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.lgmateus.rule=Host(`lgmateus.com`) || Host(`www.lgmateus.com`)
+      - traefik.http.routers.lgmateus.entrypoints=websecure
+      - traefik.http.routers.lgmateus.tls.options=cf-aop@file
+      - traefik.http.services.lgmateus.loadbalancer.server.port=3000
+
+networks:
+  edge:
+    external: true
