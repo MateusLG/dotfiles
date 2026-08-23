@@ -40,8 +40,6 @@ services:
       - ./traefik.yml:/etc/traefik/traefik.yml:ro
       - ./dynamic:/etc/traefik/dynamic:ro
       - /etc/ssl/cloudflare:/certs:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     networks:
       - edge
       - socket

@@ -9,9 +9,15 @@ Komodo, com Traefik substituindo o nginx como proxy reverso, sem downtime planej
 com rollback possível em cada etapa.
 
 **Arquitetura:** Komodo (Core + Mongo + Periphery) sobe primeiro sem tocar em produção.
-O Traefik entra em portas alternativas para ser validado enquanto o nginx ainda atende,
-e só então assume 80/443. Cada app vira container uma por vez, com o roteamento saindo
-de um arquivo estático (`legacy.yml`) e passando para labels do compose.
+O Traefik sobe em portas alternativas com certs e mTLS completos, mas sem nenhum backend
+atrás: não dá para rotear para as apps ainda em systemd, porque elas escutam em
+`127.0.0.1` e um container não alcança o loopback do host. Por isso a ordem se inverte —
+cada app vira container primeiro, publicando em `127.0.0.1:<mesma porta que a unit
+systemd usa hoje>`. Isso mantém o nginx funcionando sem nenhuma alteração: ele continua
+com o mesmo `proxy_pass` de sempre, só que quem responde do outro lado agora é o
+container. Cada app é validada nos dois caminhos — pelo domínio de produção (via nginx)
+e pelo Traefik alternativo (via labels) — antes do corte. O corte final move o Traefik
+para 80/443, desliga o nginx e remove as portas de loopback, que perdem a função.
 
 **Stack:** Docker Compose, Komodo v2, Traefik v3.7, MongoDB 8, nginx-unprivileged
 (estático), Python 3.12/3.14 + uv, Node 24.
@@ -47,7 +53,6 @@ vps/
 ├── stacks/traefik/traefik.yml       # config estática
 ├── stacks/traefik/dynamic/tls.yml         # certs + tls options (AOP/mTLS)
 ├── stacks/traefik/dynamic/middlewares.yml # redirect www → apex
-├── stacks/traefik/dynamic/legacy.yml      # TEMPORÁRIO: rotas p/ apps em systemd
 ├── stacks/ericsongomes/{compose.yaml,nginx.conf}
 ├── stacks/turmasunb/compose.yaml
 ├── stacks/albumcopa/compose.yaml
@@ -356,11 +361,15 @@ ls /etc/komodo/repos/
 ## Task 4: Traefik em portas alternativas
 
 O Traefik sobe completo — certs, mTLS, middlewares — mas em `8080`/`8443`, que o ufw não
-libera. Produção segue no nginx. Isso permite validar TLS e roteamento antes do corte.
+libera. Produção segue no nginx. Nesta task não existe nenhuma app em container ainda
+(essa task roda antes da Task 3 e da Task 5 na ordem de execução), então não há backend
+nenhum atrás do Traefik: o que dá para validar aqui é que ele sobe limpo e que o mTLS
+recusa handshake sem cert de cliente. O roteamento até cada app é validado task a task,
+a partir da Task 5.
 
 **Arquivos:**
 - Criar: `vps/stacks/traefik/compose.yaml`, `vps/stacks/traefik/traefik.yml`,
-  `vps/stacks/traefik/dynamic/{tls.yml,middlewares.yml,legacy.yml}`
+  `vps/stacks/traefik/dynamic/{tls.yml,middlewares.yml}`
 
 **Interfaces:**
 - Consome: rede `edge` (Task 1); certs em `/etc/ssl/cloudflare`.
@@ -477,62 +486,7 @@ http:
         permanent: true
 ```
 
-- [ ] **Passo 4: Escrever `vps/stacks/traefik/dynamic/legacy.yml`**
-
-Temporário: aponta para as apps que ainda rodam em systemd. Cada app migrada some daqui.
-O ericsongomes não entra — ele vira container na Task 5.
-
-```yaml
-## TEMPORARIO — rotas para as apps ainda em systemd.
-## Cada entrada e removida quando a app vira container (Tasks 8-11).
-## Este arquivo e apagado na Task 15.
-http:
-  routers:
-    legacy-lgmateus:
-      rule: "Host(`lgmateus.com`) || Host(`www.lgmateus.com`)"
-      entryPoints: [websecure]
-      service: legacy-lgmateus
-      tls:
-        options: cf-aop
-    legacy-turmasunb:
-      rule: "Host(`turmasunb.com`) || Host(`www.turmasunb.com`)"
-      entryPoints: [websecure]
-      service: legacy-turmasunb
-      tls:
-        options: cf-aop
-    legacy-albumcopa:
-      rule: "Host(`album.lgmateus.com`)"
-      entryPoints: [websecure]
-      service: legacy-albumcopa
-      tls:
-        options: cf-aop
-    legacy-gestao:
-      rule: "Host(`crea.lglabs.tech`)"
-      entryPoints: [websecure]
-      service: legacy-gestao
-      tls:
-        options: cf-aop-optional
-
-  services:
-    legacy-lgmateus:
-      loadBalancer:
-        servers:
-          - url: "http://host.docker.internal:3000"
-    legacy-turmasunb:
-      loadBalancer:
-        servers:
-          - url: "http://host.docker.internal:8000"
-    legacy-albumcopa:
-      loadBalancer:
-        servers:
-          - url: "http://host.docker.internal:8001"
-    legacy-gestao:
-      loadBalancer:
-        servers:
-          - url: "http://host.docker.internal:8002"
-```
-
-- [ ] **Passo 5: Escrever `vps/stacks/traefik/compose.yaml`**
+- [ ] **Passo 4: Escrever `vps/stacks/traefik/compose.yaml`**
 
 `cap_add: NET_BIND_SERVICE` é obrigatório: com `cap_drop: ALL` o Traefik não consegue dar
 bind na 80/443 dentro do container.
@@ -570,8 +524,6 @@ services:
       - ./traefik.yml:/etc/traefik/traefik.yml:ro
       - ./dynamic:/etc/traefik/dynamic:ro
       - /etc/ssl/cloudflare:/certs:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     networks:
       - edge
       - socket
@@ -583,7 +535,7 @@ networks:
     internal: true
 ```
 
-- [ ] **Passo 6: Commit e push**
+- [ ] **Passo 5: Commit e push**
 
 O Komodo lê do GitHub, então push aqui não é opcional.
 
@@ -594,34 +546,29 @@ git commit -m "add: stack do traefik com origin certs e mTLS da cloudflare"
 git push
 ```
 
-- [ ] **Passo 7: Criar a Stack no Komodo**
+- [ ] **Passo 6: Criar a Stack no Komodo**
 
 UI → Stacks → New → nome `traefik`, modo *Git Repo*:
 repo `MateusLG/dotfiles`, branch `main`, run directory `vps/stacks/traefik`.
 Deploy.
 
-- [ ] **Passo 8: Verificar que subiu sem erro de config**
+- [ ] **Passo 7: Verificar que sobe limpo e o mTLS recusa sem cert**
+
+Não existe nenhuma app em container ainda, então não há service nenhum atrás do Traefik
+— não dá para testar roteamento até um backend real. O que dá para confirmar aqui é que
+a config subiu sem erro e que a conexão sem cert de cliente é recusada no handshake TLS,
+antes de qualquer roteamento HTTP.
 
 ```bash
 docker logs $(docker ps -qf name=traefik) 2>&1 | grep -iE 'error|fatal' | head
-```
-Esperado: nenhuma saída. Erro de sintaxe em tls options aparece aqui.
 
-- [ ] **Passo 9: Verificar o roteamento e o mTLS**
-
-```bash
 # Sem cert de cliente: a conexao deve ser recusada no handshake (isso e o AOP funcionando)
 curl -sv --resolve turmasunb.com:8443:127.0.0.1 https://turmasunb.com:8443/ 2>&1 | \
   grep -iE 'certificate required|alert|SSL_ERROR|subject:'
-
-# O crea esta em modo permissivo e deve responder 200 mesmo sem cert de cliente
-curl -s -o /dev/null -w '%{http_code}\n' --resolve crea.lglabs.tech:8443:127.0.0.1 \
-  https://crea.lglabs.tech:8443/
 ```
-Esperado: o primeiro comando mostra recusa por falta de cert de cliente; o segundo
-imprime `200`, provando que o roteamento até o uvicorn na 8002 funciona.
-
-Se o segundo devolver `404`, o router não casou — confira `docker exec $(docker ps -qf name=traefik) traefik healthcheck` e o `legacy.yml`.
+Esperado: nenhuma saída no primeiro comando (erro de sintaxe em tls options apareceria
+aqui); recusa por falta de cert de cliente no segundo. O roteamento até cada app é
+validado task a task, a partir da Task 5.
 
 **Rollback:** apagar a Stack no Komodo. O nginx nunca parou.
 
@@ -635,6 +582,13 @@ desligar o nginx sem isso derruba o site.
 Nesta task o container só monta o build que já existe em `/var/www` — o `deploy ericsongomes`
 continua funcionando igual. A conversão para Build próprio é a Task 12, deliberadamente
 depois do corte, para não somar variáveis no momento mais arriscado.
+
+Diferente das outras quatro apps (Tasks 8-11), aqui não existe "mesma porta" para
+publicar em loopback: o nginx não faz proxy para o ericsongomes, ele serve os arquivos
+estáticos direto do disco (`/var/www/ericsongomes`). Então o nginx continua servindo o
+site intocado, sem saber que o container existe, até o corte da Task 6. A validação
+deste container é só pelo Traefik alternativo — não tem `systemctl stop`, porque não
+existe unit systemd para desligar.
 
 **Arquivos:**
 - Criar: `vps/stacks/ericsongomes/compose.yaml`, `vps/stacks/ericsongomes/nginx.conf`
@@ -772,15 +726,24 @@ Esperado: nenhum erro sobre `ericsongomes`.
 
 ## Task 6: Corte — Traefik assume 80/443
 
-O momento crítico. Tudo já foi validado; aqui só se troca quem escuta nas portas.
+**Executada por último entre as tasks de infraestrutura, depois da Task 12.** Nesse
+ponto as 5 apps já são container e já respondem nos domínios de produção através do
+nginx (via `127.0.0.1:<porta>`) e do Traefik alternativo (via label). O momento crítico
+aqui é só trocar quem escuta nas portas 80/443 — parar o nginx e mover o Traefik para o
+lugar dele. As portas de loopback das apps, que existiam só para o nginx alcançar o
+container, perdem a função e são removidas ao final.
 
 **Arquivos:**
 - Modificar: `vps/stacks/traefik/compose.yaml` (bloco `ports`)
 - Modificar: `vps/komodo/compose.yaml` (remove o bind em 9120, adiciona labels)
+- Modificar: `vps/stacks/{turmasunb,albumcopa,lgmateus,gestao}/compose.yaml` (remove o
+  bloco `ports` de loopback)
 
 **Interfaces:**
-- Consome: Stack `traefik` validada (Task 4), `ericsongomes` no ar (Task 5).
-- Produz: os 5 domínios das apps + `komodo.lgmateus.com` servidos pelo Traefik.
+- Consome: Stack `traefik` validada (Task 4); turmasunb, albumcopa, lgmateus, gestao e
+  ericsongomes já em container e validados (Tasks 5, 8-12).
+- Produz: os 5 domínios das apps + `komodo.lgmateus.com` servidos pelo Traefik em 80/443,
+  sem nenhuma porta de app publicada no host.
 
 - [ ] **Passo 1: Registrar o estado atual, para comparação depois**
 
@@ -791,15 +754,26 @@ done
 ```
 Esperado: `200` em todos (a requisição sai pela Cloudflare e volta). Guarde a saída.
 
-- [ ] **Passo 2: DNS do Komodo (manual)**
+- [ ] **Passo 2: Confirmar o DNS do Komodo**
 
-Cloudflare → zona `lgmateus.com` → registro A `komodo` → IP da VPS, **proxied**.
+Já foi feito fora deste plano — aqui só confirma que continua valendo.
 
-- [ ] **Passo 3: Cloudflare Access (manual)**
+```bash
+dig +short komodo.lgmateus.com
+```
+Esperado: um IP da Cloudflare (não o IP real da VPS — é assim que o proxy laranja
+funciona), confirmando o registro A `komodo` proxied na zona `lgmateus.com`. Se não
+resolver nada, o registro sumiu e precisa ser recriado antes de seguir.
 
-Zero Trust → Access → Applications → Self-hosted → `komodo.lgmateus.com`.
-Política: Allow, e-mail `mateuslira3105@gmail.com`, método OTP por e-mail.
-Sem isso, o passo 6 expõe a UI só com a auth local do Komodo.
+- [ ] **Passo 3: Confirmar o Cloudflare Access**
+
+Também já configurado — confirmar que continua valendo antes de expor a UI em domínio
+público.
+
+Zero Trust → Access → Applications: conferir que existem as duas aplicações para
+`komodo.lgmateus.com` — a da raiz, com política Allow por e-mail
+(`mateuslira3105@gmail.com`, OTP), e a do path `/listener`, com Bypass (para os
+webhooks). Sem a primeira, o passo do corte expõe a UI só com a auth local do Komodo.
 
 - [ ] **Passo 4: Trocar as portas do Traefik**
 
@@ -875,13 +849,33 @@ docker logs $(docker ps -qf name=traefik) 2>&1 | tail -5
 Esperado: `ClientAddr`/`X-Forwarded-For` com IP de visitante, não com IP de faixa da
 Cloudflare. Se vier IP da CF, `trustedIPs` está errado.
 
-**Rollback (< 1 min):**
+- [ ] **Passo 11: Remover as portas de loopback das apps**
+
+Só depois de tudo verificado nos passos anteriores — isso é cleanup, não faz parte do
+corte em si, e adiar preserva a janela de rollback de baixo risco. Em
+`vps/stacks/turmasunb/compose.yaml`, `vps/stacks/albumcopa/compose.yaml`,
+`vps/stacks/lgmateus/compose.yaml` e `vps/stacks/gestao/compose.yaml`, remover o bloco
+`ports: ["127.0.0.1:<porta>:<porta>"]` de cada um (o ericsongomes nunca teve).
+
+```bash
+cd ~/dotfiles
+git add vps/stacks/turmasunb/compose.yaml vps/stacks/albumcopa/compose.yaml \
+  vps/stacks/lgmateus/compose.yaml vps/stacks/gestao/compose.yaml
+git commit -m "chore: remove portas de loopback das apps, sem funcao apos o corte"
+git push
+```
+Depois, Redeploy de cada uma das quatro Stacks na UI.
+
+**Rollback (< 1 min, válido até o Passo 11 remover as portas de loopback):**
 
 ```bash
 docker compose -p traefik down    # ou "Destroy" na UI do Komodo
 sudo systemctl enable --now nginx
 ```
-O ericsongomes volta a ser servido pelo vhost, que continua no disco.
+O ericsongomes volta a ser servido pelo vhost, que continua no disco, e o nginx volta a
+achar as apps nas portas de loopback de sempre. Depois do Passo 11, essas portas não
+existem mais — reverter exige antes reverter o commit do passo e redeployar as quatro
+Stacks para o container voltar a publicar em loopback.
 
 ---
 
@@ -985,11 +979,11 @@ Primeira app com Build de verdade. Repo público, então não depende do provide
 **Arquivos:**
 - Criar: `Dockerfile` no repo `MateusLG/turmasunb`
 - Criar: `vps/stacks/turmasunb/compose.yaml`
-- Modificar: `vps/stacks/traefik/dynamic/legacy.yml` (remover a entrada `legacy-turmasunb`)
 
 **Interfaces:**
 - Consome: Builder `srv1` (Task 3), Postgres via rede (Task 7), `cf-aop@file` (Task 4).
-- Produz: imagem `turmasunb:latest`; volume `turmasunb-backups` montado em `/app/backups`.
+- Produz: imagem `turmasunb:latest`; volume `turmasunb-backups` montado em `/app/backups`;
+  container publicado em `127.0.0.1:8000` (mesma porta da unit, para o nginx).
 
 - [ ] **Passo 1: Escrever o `Dockerfile` no repo do turmasunb**
 
@@ -1056,6 +1050,9 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    ports:
+      ## Loopback pro nginx continuar apontando pra mesma porta ate o corte (Task 6).
+      - "127.0.0.1:8000:8000"
     environment:
       DATABASE_URL: ${TURMASUNB_DATABASE_URL}
       SEMESTER: ${TURMASUNB_SEMESTER}
@@ -1088,26 +1085,24 @@ networks:
     external: true
 ```
 
-- [ ] **Passo 7: Remover a rota legada e publicar**
-
-Apagar de `vps/stacks/traefik/dynamic/legacy.yml` o router `legacy-turmasunb` e o service
-`legacy-turmasunb`.
+- [ ] **Passo 7: Commit e push**
 
 ```bash
 cd ~/dotfiles
-git add vps/stacks/turmasunb/ vps/stacks/traefik/dynamic/legacy.yml
+git add vps/stacks/turmasunb/
 git commit -m "add: stack do turmasunb em container"
 git push
 ```
 
-- [ ] **Passo 8: Corte da app**
+- [ ] **Passo 8: Parar a unit e subir a stack**
+
+Nessa ordem: a porta 8000 precisa estar livre antes do container tentar publicar nela.
 
 ```bash
 sudo systemctl stop turmasunb
 ```
 Em seguida, na UI: criar a Stack `turmasunb` (Git Repo, run directory
-`vps/stacks/turmasunb`) e dar Deploy. Depois, Redeploy na Stack `traefik` para recarregar
-o `legacy.yml`.
+`vps/stacks/turmasunb`) e dar Deploy.
 
 - [ ] **Passo 9: Copiar os backups antigos para o volume**
 
@@ -1120,14 +1115,21 @@ docker exec $(docker ps -qf name=turmasunb) ls /app/backups | tail -3
 ```
 Esperado: os arquivos aparecem dentro do container.
 
-- [ ] **Passo 10: Verificar**
+- [ ] **Passo 10: Verificar pelos dois caminhos**
+
+O domínio de produção passa pelo nginx, que aponta pra mesma porta 8000 de sempre — se
+responder igual a antes, a troca foi transparente. O Traefik alternativo confirma que o
+roteamento por label já está certo para quando ele assumir 80/443 na Task 6.
 
 ```bash
 curl -s -o /dev/null -w '%{http_code}\n' https://turmasunb.com/
+curl -sv --resolve turmasunb.com:8443:127.0.0.1 https://turmasunb.com:8443/ 2>&1 | \
+  grep -iE 'certificate required|alert|SSL_ERROR|subject:'
 docker logs $(docker ps -qf name=turmasunb) 2>&1 | tail -20
 ```
-Esperado: `200` e log sem erro de conexão com o banco. Abrir o site e conferir que as
-turmas aparecem — é o que prova que o Postgres respondeu.
+Esperado: `200` no primeiro; recusa por falta de cert de cliente no segundo (é o mesmo
+AOP que protege o domínio real); log sem erro de conexão com o banco. Abrir o site e
+conferir que as turmas aparecem — é o que prova que o Postgres respondeu.
 
 - [ ] **Passo 11: Desabilitar a unit**
 
@@ -1142,8 +1144,8 @@ Não apague nada de `/srv/turmasunb` — é o rollback até a Task 15.
 cd ~/dotfiles && git commit --allow-empty -m "chore: turmasunb migrado para container" && git push
 ```
 
-**Rollback:** restaurar a entrada no `legacy.yml`, push, redeploy do traefik,
-`sudo systemctl start turmasunb`, destruir a Stack.
+**Rollback:** parar a Stack (ou "Destroy" na UI) e `sudo systemctl start turmasunb`. A
+porta 8000 volta a ser da unit systemd, e o nginx nem percebe a troca.
 
 ---
 
@@ -1155,11 +1157,11 @@ Task 3.
 **Arquivos:**
 - Modificar: `Dockerfile` no repo `MateusLG/album-copa`
 - Criar: `vps/stacks/albumcopa/compose.yaml`
-- Modificar: `vps/stacks/traefik/dynamic/legacy.yml`
 
 **Interfaces:**
 - Consome: provider `github.com` (Task 3), Postgres via rede (Task 7).
-- Produz: imagem `albumcopa:latest`.
+- Produz: imagem `albumcopa:latest`; container publicado em `127.0.0.1:8001` (mesma
+  porta da unit, para o nginx).
 
 - [ ] **Passo 1: Ajustar o Dockerfile existente**
 
@@ -1212,6 +1214,9 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    ports:
+      ## Loopback pro nginx continuar apontando pra mesma porta ate o corte (Task 6).
+      - "127.0.0.1:8001:8001"
     environment:
       DATABASE_URL: ${ALBUMCOPA_DATABASE_URL}
     extra_hosts:
@@ -1234,34 +1239,39 @@ networks:
     external: true
 ```
 
-- [ ] **Passo 7: Remover a rota legada, commit e push**
-
-Apagar `legacy-albumcopa` (router e service) de `legacy.yml`.
+- [ ] **Passo 7: Commit e push**
 
 ```bash
 cd ~/dotfiles
-git add vps/stacks/albumcopa/ vps/stacks/traefik/dynamic/legacy.yml
+git add vps/stacks/albumcopa/
 git commit -m "add: stack do album-copa em container"
 git push
 ```
 
-- [ ] **Passo 8: Corte**
+- [ ] **Passo 8: Parar a unit e subir a stack**
+
+Nessa ordem: a porta 8001 precisa estar livre antes do container tentar publicar nela.
 
 ```bash
 sudo systemctl stop albumcopa
 ```
-UI: criar Stack `albumcopa` (run directory `vps/stacks/albumcopa`), Deploy; Redeploy do
-`traefik`.
+UI: criar Stack `albumcopa` (run directory `vps/stacks/albumcopa`), Deploy.
 
-- [ ] **Passo 9: Verificar**
+- [ ] **Passo 9: Verificar pelos dois caminhos**
+
+O domínio de produção passa pelo nginx, que aponta pra mesma porta 8001 de sempre. O
+Traefik alternativo confirma que o roteamento por label já está certo para a Task 6.
 
 ```bash
 curl -s -o /dev/null -w '%{http_code}\n' https://album.lgmateus.com/
 curl -s -o /dev/null -w '%{http_code}\n' https://album.lgmateus.com/api/colecao \
   -H 'X-Username: teste'
+curl -sv --resolve album.lgmateus.com:8443:127.0.0.1 https://album.lgmateus.com:8443/ 2>&1 | \
+  grep -iE 'certificate required|alert|SSL_ERROR|subject:'
 ```
 Esperado: `200` no primeiro. O segundo prova que a API alcançou o banco — qualquer
-resposta que não seja erro 5xx serve; ajuste o path se a rota tiver outro nome.
+resposta que não seja erro 5xx serve; ajuste o path se a rota tiver outro nome. O
+terceiro mostra recusa por falta de cert de cliente, o mesmo AOP do domínio real.
 
 - [ ] **Passo 10: Desabilitar a unit e fechar**
 
@@ -1281,11 +1291,11 @@ A única que exige mudança de configuração no código da app.
 - Modificar: `next.config.ts` no repo `MateusLG/lgmateus.com`
 - Criar: `Dockerfile` no mesmo repo
 - Criar: `vps/stacks/lgmateus/compose.yaml`
-- Modificar: `vps/stacks/traefik/dynamic/legacy.yml`
 
 **Interfaces:**
 - Consome: provider `github.com` (Task 3).
-- Produz: imagem `lgmateus:latest`.
+- Produz: imagem `lgmateus:latest`; container publicado em `127.0.0.1:3000` (mesma porta
+  da unit, para o nginx).
 
 - [ ] **Passo 1: Ligar o output standalone**
 
@@ -1375,6 +1385,9 @@ services:
     tmpfs:
       - /tmp
       - /app/.next/cache
+    ports:
+      ## Loopback pro nginx continuar apontando pra mesma porta ate o corte (Task 6).
+      - "127.0.0.1:3000:3000"
     environment:
       NODE_ENV: production
     networks:
@@ -1392,30 +1405,35 @@ networks:
     external: true
 ```
 
-- [ ] **Passo 7: Remover a rota legada, commit e push**
+- [ ] **Passo 7: Commit e push**
 
 ```bash
 cd ~/dotfiles
-git add vps/stacks/lgmateus/ vps/stacks/traefik/dynamic/legacy.yml
+git add vps/stacks/lgmateus/
 git commit -m "add: stack do lgmateus em container"
 git push
 ```
 
-- [ ] **Passo 8: Corte**
+- [ ] **Passo 8: Parar a unit e subir a stack**
+
+Nessa ordem: a porta 3000 precisa estar livre antes do container tentar publicar nela.
 
 ```bash
 sudo systemctl stop lgmateus
 ```
-UI: criar Stack `lgmateus`, Deploy; Redeploy do `traefik`.
+UI: criar Stack `lgmateus`, Deploy.
 
-- [ ] **Passo 9: Verificar, inclusive imagem**
+- [ ] **Passo 9: Verificar pelos dois caminhos, inclusive imagem**
 
 ```bash
 curl -s -o /dev/null -w '%{http_code}\n' https://lgmateus.com/
 curl -s -o /dev/null -w '%{http_code}\n' 'https://lgmateus.com/_next/image?url=%2Ffavicon.ico&w=64&q=75'
+curl -sv --resolve lgmateus.com:8443:127.0.0.1 https://lgmateus.com:8443/ 2>&1 | \
+  grep -iE 'certificate required|alert|SSL_ERROR|subject:'
 ```
-Esperado: `200` nos dois. O segundo é o teste do tmpfs — se der `500`, o cache não está
-gravável.
+Esperado: `200` nos dois primeiros — o segundo é o teste do tmpfs, se der `500` o cache
+não está gravável. O terceiro mostra recusa por falta de cert de cliente, confirmando o
+roteamento por label para a Task 6.
 
 Conferir também que a troca de idioma (next-intl) funciona, já que o `proxy.ts` roda em
 standalone.
@@ -1438,11 +1456,11 @@ Por último entre as apps porque é a que tem cliente validando dado. Repo em or
 **Arquivos:**
 - Criar: `Dockerfile` no repo `KodiumAI/OS0048-Modulo-Gestao-CREA`
 - Criar: `vps/stacks/gestao/compose.yaml`
-- Modificar: `vps/stacks/traefik/dynamic/legacy.yml`
 
 **Interfaces:**
 - Consome: provider `github.com` (Task 3), Postgres via rede (Task 7).
-- Produz: imagem `gestao:latest`.
+- Produz: imagem `gestao:latest`; container publicado em `127.0.0.1:8002` (mesma porta
+  da unit, para o nginx).
 
 - [ ] **Passo 1: Escrever o `Dockerfile` na raiz do repo**
 
@@ -1526,6 +1544,9 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+    ports:
+      ## Loopback pro nginx continuar apontando pra mesma porta ate o corte (Task 6).
+      - "127.0.0.1:8002:8002"
     environment:
       ENV: ${GESTAO_ENV}
       DATABASE_URL: ${GESTAO_DATABASE_URL}
@@ -1567,36 +1588,42 @@ networks:
     external: true
 ```
 
-- [ ] **Passo 7: Remover a rota legada, commit e push**
-
-Com isso o `legacy.yml` fica sem nenhum router — deixe o arquivo com a estrutura vazia
-`http: {}` até a Task 15.
+- [ ] **Passo 7: Commit e push**
 
 ```bash
 cd ~/dotfiles
-git add vps/stacks/gestao/ vps/stacks/traefik/dynamic/legacy.yml
+git add vps/stacks/gestao/
 git commit -m "add: stack do os48 em container"
 git push
 ```
 
-- [ ] **Passo 8: Corte**
+- [ ] **Passo 8: Parar a unit e subir a stack**
+
+Nessa ordem: a porta 8002 precisa estar livre antes do container tentar publicar nela.
 
 ```bash
 sudo systemctl stop gestao
 ```
-UI: criar Stack `gestao`, Deploy; Redeploy do `traefik`.
+UI: criar Stack `gestao`, Deploy.
 
-- [ ] **Passo 9: Verificar, com atenção ao SSO e ao upload**
+- [ ] **Passo 9: Verificar pelos dois caminhos, com atenção ao SSO e ao upload**
 
 ```bash
 curl -s -o /dev/null -w '%{http_code}\n' https://crea.lglabs.tech/
+curl -s -o /dev/null -w '%{http_code}\n' --resolve crea.lglabs.tech:8443:127.0.0.1 \
+  https://crea.lglabs.tech:8443/
 docker logs $(docker ps -qf name=gestao) 2>&1 | tail -30
 ```
+Esperado: `200` nos dois — o crea está em modo permissivo (`cf-aop-optional`), então o
+Traefik alternativo responde sem exigir cert de cliente. O segundo comando confirma que o
+roteamento por label está certo para a Task 6.
 
 Depois, no navegador: entrar pelo fluxo de SSO, abrir a aba Documentos, **baixar** um
 documento existente e **subir** um novo (o conteúdo vai para coluna binária no banco, não
-para disco — é o teste de que nada dependia do filesystem). Confira também que o limite
-de 25MB some: um arquivo maior que isso agora passa, onde antes o nginx recusava.
+para disco — é o teste de que nada dependia do filesystem). **Não** teste upload acima de
+25MB ainda: quem serve `crea.lglabs.tech` em produção é o nginx, com o mesmo
+`client_max_body_size 25m` de sempre — o limite só some no corte da Task 6, quando o
+nginx sai de cena.
 
 - [ ] **Passo 10: Desabilitar a unit**
 
@@ -1604,8 +1631,9 @@ de 25MB some: um arquivo maior que isso agora passa, onde antes o nginx recusava
 sudo systemctl disable gestao
 ```
 
-**Rollback:** restaurar a entrada no `legacy.yml`, push, redeploy do traefik,
-`sudo systemctl start gestao`, destruir a Stack. O `/srv/gestao` está intacto.
+**Rollback:** parar a Stack (ou "Destroy" na UI) e `sudo systemctl start gestao`. A porta
+8002 volta a ser da unit systemd, e o nginx nem percebe a troca. O `/srv/gestao` está
+intacto.
 
 ---
 
@@ -1803,8 +1831,7 @@ git push
 Só depois que as 5 apps estiverem verdes em container por pelo menos alguns dias.
 
 **Arquivos:**
-- Remover: `vps/bin/deploy.sh`, `vps/etc/nginx/`, `vps/etc/systemd/` (units das apps),
-  `vps/stacks/traefik/dynamic/legacy.yml`
+- Remover: `vps/bin/deploy.sh`, `vps/etc/nginx/`, `vps/etc/systemd/` (units das apps)
 - Modificar: `vps/apps.md`, `vps/README.md`
 
 **Interfaces:**
@@ -1830,13 +1857,7 @@ sudo systemctl daemon-reload
 sudo apt-get purge -y nginx nginx-common
 ```
 
-- [ ] **Passo 3: Remover o `legacy.yml`**
-
-```bash
-cd ~/dotfiles && git rm vps/stacks/traefik/dynamic/legacy.yml
-```
-
-- [ ] **Passo 4: Limpar o resto**
+- [ ] **Passo 3: Limpar o resto**
 
 ```bash
 sudo rm -rf /srv/plataforma
@@ -1847,18 +1868,18 @@ cd ~/dotfiles && git rm -r vps/bin/deploy.sh vps/etc/nginx vps/etc/systemd
 Os diretórios `/srv/<app>` e os users de sistema podem ficar mais um tempo — são o último
 rollback possível. Remova só quando tiver certeza.
 
-- [ ] **Passo 5: Reescrever `vps/apps.md`**
+- [ ] **Passo 4: Reescrever `vps/apps.md`**
 
 Atualizar a tabela (coluna "Serviço" vira "Stack"), trocar a seção de fluxo de requisição
 pelo diagrama novo, substituir a seção de deploy pelo fluxo do Komodo e remover a seção
 de deploy keys — que deixou de existir.
 
-- [ ] **Passo 6: Atualizar `vps/README.md`**
+- [ ] **Passo 5: Atualizar `vps/README.md`**
 
 Trocar as referências a nginx e `deploy.sh` pelo Komodo e Traefik. Documentar como
 acessar a UI, onde vive o `compose.env` e como fazer rollback de uma stack.
 
-- [ ] **Passo 7: Endurecer o mTLS do crea**
+- [ ] **Passo 6: Endurecer o mTLS do crea**
 
 Pendência aberta desde a Task 4. Cloudflare → zona `lglabs.tech` → SSL/TLS → Origin
 Server → ligar **Authenticated Origin Pulls**. Depois, em
@@ -1872,7 +1893,7 @@ curl -sv --resolve crea.lglabs.tech:443:127.0.0.1 https://crea.lglabs.tech/ 2>&1
 ```
 Esperado: `200` pela Cloudflare, e recusa no acesso direto à origem.
 
-- [ ] **Passo 8: Verificação final**
+- [ ] **Passo 7: Verificação final**
 
 ```bash
 docker ps --format 'table {{.Names}}\t{{.Status}}'
@@ -1884,7 +1905,7 @@ free -h && df -h /
 Esperado: todos os containers `Up`, `200` nos cinco domínios, e memória/disco em nível
 comparável ao anterior à migração.
 
-- [ ] **Passo 9: Commit final**
+- [ ] **Passo 8: Commit final**
 
 ```bash
 cd ~/dotfiles
@@ -1897,7 +1918,21 @@ git push
 
 ## Ordem e pontos de parada
 
-Tasks 1-3 não tocam produção. A Task 6 é o único momento de indisponibilidade planejada.
+Ordem de execução: **1, 2, 4, 7, 3, 5, 8, 9, 10, 11, 12, 6, 13, 14, 15**. Os números das
+tasks não mudam, só a ordem em que rodam. A Task 4 (Traefik em portas alternativas) roda
+logo depois do Komodo no ar, antes de qualquer app existir em container — é por isso que
+ela não valida roteamento, só que o Traefik sobe limpo e o mTLS funciona. Cada app vira
+container antes do corte (Tasks 5, 8-12); a Task 6 roda por último entre as tasks de
+infraestrutura, depois que as 5 apps já estão em container e validadas nos dois
+caminhos.
+
+Tasks 1, 2, 4 e 7 não tocam produção. Não existe mais um único momento crítico: cada uma
+das Tasks 8-11 tem sua própria janela de indisponibilidade, de segundos — o intervalo
+entre `systemctl stop <unit>` e o container subir escutando na mesma porta que o nginx já
+espera. A Task 6 é o último ponto de indisponibilidade planejada: o intervalo entre
+desligar o nginx e o Traefik assumir 80/443, que é também o momento em que o
+ericsongomes passa a ser servido pelo container em vez do vhost estático.
+
 As Tasks 8-11 são independentes entre si: se uma der problema, faça rollback só dela e
 siga para a próxima.
 

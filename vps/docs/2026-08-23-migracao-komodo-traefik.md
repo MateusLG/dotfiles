@@ -28,7 +28,7 @@ roteamento HTTP passa pelo Traefik.
 | TLS | **Origin Certs da Cloudflare (existentes) + AOP** | Paridade com hoje; com proxy laranja + Full strict não há motivo pra ACME |
 | Acesso à UI do Komodo | **Subdomínio atrás do Cloudflare Access** | A UI controla o socket do Docker; auth do Komodo sozinha não basta |
 | Onde mora a config | **`dotfiles/vps/` (repo público)** | Consistente com `etc/nginx` e `etc/systemd`, que já estão lá. Segredos ficam nas Variables do Komodo, nunca no arquivo |
-| Ordem de execução | **Traefik primeiro, apps depois** | A troca da borda é a parte arriscada; isolá-la permite validar antes de mexer nas apps |
+| Ordem de execução | **Apps primeiro, corte da borda por último** | Traefik na frente das apps ainda em systemd não funciona: elas escutam em `127.0.0.1`, loopback que um container não alcança. Cada app vira container publicando na mesma porta que a unit usa hoje, o nginx segue apontando pra ela sem perceber a troca, e o corte da borda (nginx → Traefik) fica isolado no fim, já com as 5 apps validadas |
 
 ## 3. Estado atual (baseline)
 
@@ -184,6 +184,13 @@ labels:
   - traefik.http.services.turmasunb.loadbalancer.server.port=8000
 ```
 
+Até o corte da borda, cada stack **também** publica em loopback, na mesma porta que a
+unit systemd usava: `ports: ["127.0.0.1:8000:8000"]`. É assim que o nginx atual continua
+proxyando pra ela sem nenhuma alteração — ele nunca percebe que trocou de processo pra
+container. O ericsongomes é a exceção: o nginx nunca fez proxy pra ele (serve estático
+direto do disco), então não há porta para replicar; ele fica só na `edge`, validado pelo
+Traefik alternativo até o corte.
+
 Endurecimento padrão em toda stack, compensando o sandbox systemd que se perde:
 
 ```yaml
@@ -249,9 +256,6 @@ vps/
 Cada compose fica no seu diretório junto com os arquivos que ele monta: o Komodo aponta
 uma Stack para um `run_directory` do repo, e mounts relativos resolvem a partir dali.
 
-`stacks/traefik/dynamic/legacy.yml` é temporário: existe só durante a fase 1, roteando para as
-apps ainda em systemd. É esvaziado app a app na fase 2 e apagado no fim.
-
 ## 7. Fluxo de deploy
 
 | Hoje | Depois |
@@ -278,48 +282,74 @@ SSH só por chave.
 
 ## 9. Fases
 
-Cada fase tem critério de aceite e rollback próprios. Nenhuma avança sem a anterior verde.
+Cada fase tem critério de aceite e rollback próprios. Nenhuma avança sem a anterior
+verde. A ordem inverte a intuição óbvia — apps primeiro, borda por último — porque a
+ordem óbvia não funciona: ver o Risco correspondente na seção 10.
 
 ### Fase 0 — Komodo no ar
-Sobe `komodo/compose.yaml` e conecta o servidor pelo onboarding key. O Traefik ainda não
-existe, então o Core publica temporariamente em `127.0.0.1:9120` e o acesso é por túnel
-SSH (`ssh -L 9120:localhost:9120 srv1`). O DNS e o Cloudflare Access entram na fase 1,
-junto com o Traefik; o bind em localhost é removido nessa hora.
+Sobe `komodo/compose.yaml` e conecta o servidor pelo onboarding key. Produção não é
+tocada. O Core publica temporariamente em `127.0.0.1:9120`, acesso por túnel SSH
+(`ssh -L 9120:localhost:9120 srv1`). DNS e Cloudflare Access para `komodo.lgmateus.com`
+já foram configurados fora deste plano; o bind em localhost some só na fase 3, no corte
+da borda.
 **Aceite:** UI acessível pelo túnel; servidor conectado com métricas de CPU/disco;
 rustdesk visível como stack já existente.
 **Rollback:** `docker compose down`. Produção não foi tocada.
 
-### Fase 1 — Traefik assume a borda
-Traefik sobe com `legacy.yml` roteando para as 4 apps que rodam em systemd via
-`host.docker.internal`. nginx é **parado, não removido** (`systemctl disable --now nginx`).
+### Fase 1 — Traefik em portas alternativas e infraestrutura de suporte
+Traefik sobe completo — certs, mTLS, middlewares — em `8080`/`8443`, mas **sem nenhum
+backend atrás**: não dá para rotear para as apps ainda em systemd, elas escutam em
+`127.0.0.1`, loopback que um container não alcança. O que dá para validar aqui é que o
+Traefik sobe limpo e o mTLS recusa handshake sem cert de cliente. Produção segue 100% no
+nginx.
 
-O **ericsongomes tem que virar container nesta fase**, e não na seguinte: quem serve o
-estático dele hoje é o próprio nginx, então desligar o nginx sem containerizar antes o
-deixa sem servidor. É também a app de menor risco, o que a torna um bom primeiro teste do
-padrão de Stack.
-
-Entram junto: DNS `komodo.lgmateus.com` (A proxied), política do Cloudflare Access e a
-remoção do bind em `127.0.0.1:9120` do Core.
-**Aceite:** os 5 domínios das apps + `komodo.lgmateus.com` respondem por HTTPS; acesso
-direto na origem continua recusado (AOP); `X-Forwarded-For` traz o IP real do visitante.
-**Rollback:** `docker compose down traefik && systemctl start nginx` (< 1 min). O
-ericsongomes volta a ser servido pelo vhost, que continua no disco.
+Junto, sem depender do Traefik nem de nenhuma app em container: o Postgres passa a
+aceitar conexão vinda das redes Docker (`listen_addresses`, `pg_hba`, ufw), e o provider
+do GitHub + Builder ficam prontos no Komodo.
+**Aceite:** Traefik sobe sem erro de config e recusa handshake sem cert de cliente; um
+container na rede `apps` consegue `select 1` no Postgres; um Repo de teste clona um repo
+privado pelo provider.
+**Rollback:** apagar a Stack `traefik` / reverter `pg_hba` e a regra do ufw. Nenhum dos
+dois toca produção.
 
 ### Fase 2 — Containerização, uma app por vez
-As 4 restantes, em ordem de risco crescente: **turmasunb** → **album-copa** (Dockerfile
-pronto) → **lgmateus** (precisa do `output: standalone`) → **os48** por último, que é
-onde há cliente validando dado.
-Para cada uma: Dockerfile no repo da app → Build no Komodo → Stack com labels → remover
-a entrada do `legacy.yml` → parar e desabilitar a unit systemd.
-**Aceite (por app):** domínio responde, dado do Postgres aparece, logs limpos, e a unit
-antiga desabilitada.
-**Rollback (por app):** restaurar a entrada no `legacy.yml` e `systemctl start <app>`.
-O `/srv/<app>` e a unit ficam intactos até a fase 3.
+Cada app vira container **antes** de qualquer corte, publicando em
+`127.0.0.1:<mesma porta que a unit systemd usa hoje>`. Isso mantém o nginx funcionando
+sem nenhuma alteração — ele continua com o mesmo `proxy_pass` de sempre, só que quem
+responde do outro lado agora é o container.
 
-### Fase 3 — Limpeza
-Adota o rustdesk como Stack (sem mudar o compose dele). Remove nginx, `bin/deploy.sh`,
-as units e drop-ins de `etc/systemd`, os vhosts de `etc/nginx`, `/srv/plataforma` (resto
-de projeto removido) e o `certbot.timer` órfão. Atualiza `apps.md` e `README.md`.
+Ordem: **ericsongomes** primeiro — é a exceção: o nginx serve o estático dele direto do
+disco, não faz proxy, então não há porta para replicar; o container fica validado só
+pelo Traefik alternativo até o corte. Depois, em ordem de risco crescente: **turmasunb**
+→ **album-copa** (Dockerfile pronto) → **lgmateus** (precisa do `output: standalone`) →
+**os48** por último, que é onde há cliente validando dado. Por fim, o **ericsongomes**
+ganha Build própria, fechando o provisório da primeira etapa.
+
+Para cada uma das quatro com porta (turmasunb, album-copa, lgmateus, os48): Dockerfile no
+repo da app → Build no Komodo → Stack com labels e porta de loopback → parar a unit →
+subir a stack → verificar pelo domínio de produção (via nginx) e pelo Traefik alternativo
+em 8443 (via label) → desabilitar a unit.
+**Aceite (por app):** domínio responde igual a antes, roteamento por label confirmado em
+8443, dado do Postgres aparece, logs limpos, unit antiga desabilitada.
+**Rollback (por app):** parar a Stack e `systemctl start <app>`. `/srv/<app>` e a unit
+ficam intactos até a fase 4.
+
+### Fase 3 — Corte: Traefik assume a borda
+Com as 5 apps já em container e validadas nos dois caminhos, o momento crítico fica
+isolado e pequeno: parar o nginx, mover o Traefik de `127.0.0.1:8080/8443` para `80/443`.
+Depois, com tudo verificado, as portas de loopback das apps — sem função a partir daqui —
+são removidas dos composes.
+**Aceite:** os 5 domínios + `komodo.lgmateus.com` respondem por HTTPS; acesso direto na
+origem continua recusado (AOP); `X-Forwarded-For` traz o IP real do visitante.
+**Rollback (< 1 min, válido só antes de remover as portas de loopback):**
+`docker compose down traefik && systemctl start nginx`. O ericsongomes volta a ser
+servido pelo vhost, que continua no disco.
+
+### Fase 4 — Limpeza
+Adota o rustdesk como Stack (sem mudar o compose dele) e versiona a config do Komodo em
+TOML (Resource Sync). Remove nginx, `bin/deploy.sh`, as units e drop-ins de
+`etc/systemd`, os vhosts de `etc/nginx`, `/srv/plataforma` (resto de projeto removido) e
+o `certbot.timer` órfão. Atualiza `apps.md` e `README.md`.
 **Aceite:** `systemctl list-units` sem serviço de app; `docker ps` com tudo; dotfiles
 sem arquivo morto.
 
@@ -327,12 +357,13 @@ sem arquivo morto.
 
 | Risco | Mitigação |
 |---|---|
-| mTLS/AOP mal configurado derruba todos os domínios de uma vez | É por isso que a borda migra sozinha na fase 1; rollback para nginx em menos de 1 min |
+| mTLS/AOP mal configurado derruba todos os domínios de uma vez | O Traefik é validado sozinho na fase 1, sem nenhuma app atrás; o corte da borda só acontece na fase 3, depois das 5 apps já confirmadas no Traefik alternativo — rollback para nginx em menos de 1 min |
 | RAM: Komodo (~600MB) + Traefik (~50MB) sobre 2.2G livres | Sobra ~1.5G. Se apertar, o candidato de corte é o heap de 3G do minecraft |
 | Disco: imagens + build cache na VPS | 28G livres; prune periódico pelo próprio Komodo |
 | Build competindo com produção por CPU (2 vCPU) | Buildar fora de horário de uso; se virar problema recorrente, mover o lgmateus para GitHub Actions + GHCR |
 | `crea.lglabs.tech` sem AOP na zona | Nasce em `cf-aop-optional`; endurecer depois de ligar AOP no dashboard |
 | Perda do limite de upload de 25MB no crea | Aceito conscientemente; se necessário, `buffering` middleware do Traefik |
+| Desenho original (borda primeiro, `legacy.yml` apontando pra `host.docker.internal:<porta>`) nunca funcionaria | As apps escutam em `127.0.0.1` (units systemd com `--host 127.0.0.1`), e um container não alcança o loopback do host — confirmado na máquina (`ss -tlpn` mostra bind em `127.0.0.1`, nada em `172.17.0.1`). Por isso a ordem inverteu: app primeiro, publicando na mesma porta em loopback para o nginx continuar enxergando, corte da borda por último |
 
 ## 11. Fora de escopo
 
@@ -342,7 +373,8 @@ migração é de empacotamento e roteamento, não de funcionalidade.
 
 ## 12. Pendências manuais (não versionáveis)
 
-- DNS `komodo.lgmateus.com` → A proxied para o IP da VPS.
-- Política do Cloudflare Access para o subdomínio do Komodo.
+- ~~DNS `komodo.lgmateus.com` → A proxied para o IP da VPS.~~ Feito.
+- ~~Política do Cloudflare Access para o subdomínio do Komodo (raiz com Allow por
+  e-mail, `/listener` com Bypass).~~ Feito.
 - Ligar Authenticated Origin Pulls na zona `lglabs.tech`.
 - `output: "standalone"` no repo `lgmateus.com`.
