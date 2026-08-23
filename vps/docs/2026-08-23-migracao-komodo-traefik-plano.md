@@ -1157,7 +1157,12 @@ porta 8000 volta a ser da unit systemd, e o nginx nem percebe a troca.
 >    `auto_pull: false` na sua config (via `UpdateStack` na API).
 > 2. Criar a Variable com `CreateVariable` **não injeta nada sozinho**. É preciso também
 >    preencher `config.environment` da Stack referenciando com a sintaxe `[[NOME_DA_VAR]]`.
-> Descobrir isso durante a janela de troca custou ~50s de indisponibilidade na Task 8.
+> 3. Nesse `config.environment`, o nome **à esquerda do `=`** tem que ser o mesmo usado no
+>    `${...}` do compose — **não** o nome final da variável dentro do container. Ou seja:
+>    se o compose diz `DATABASE_URL: ${ALBUMCOPA_DATABASE_URL}`, a linha correta é
+>    `ALBUMCOPA_DATABASE_URL=[[ALBUMCOPA_DATABASE_URL]]`. Errar isso deixa a variável vazia
+>    e o container entra em crash loop, com 502 no domínio até corrigir.
+> Descobrir o item 2 custou ~50s de indisponibilidade na Task 8; o item 3, ~95s na Task 9.
 
 
 
@@ -1301,7 +1306,12 @@ sudo systemctl disable albumcopa
 >    `auto_pull: false` na sua config (via `UpdateStack` na API).
 > 2. Criar a Variable com `CreateVariable` **não injeta nada sozinho**. É preciso também
 >    preencher `config.environment` da Stack referenciando com a sintaxe `[[NOME_DA_VAR]]`.
-> Descobrir isso durante a janela de troca custou ~50s de indisponibilidade na Task 8.
+> 3. Nesse `config.environment`, o nome **à esquerda do `=`** tem que ser o mesmo usado no
+>    `${...}` do compose — **não** o nome final da variável dentro do container. Ou seja:
+>    se o compose diz `DATABASE_URL: ${ALBUMCOPA_DATABASE_URL}`, a linha correta é
+>    `ALBUMCOPA_DATABASE_URL=[[ALBUMCOPA_DATABASE_URL]]`. Errar isso deixa a variável vazia
+>    e o container entra em crash loop, com 502 no domínio até corrigir.
+> Descobrir o item 2 custou ~50s de indisponibilidade na Task 8; o item 3, ~95s na Task 9.
 
 
 
@@ -1476,7 +1486,12 @@ sudo systemctl disable lgmateus
 >    `auto_pull: false` na sua config (via `UpdateStack` na API).
 > 2. Criar a Variable com `CreateVariable` **não injeta nada sozinho**. É preciso também
 >    preencher `config.environment` da Stack referenciando com a sintaxe `[[NOME_DA_VAR]]`.
-> Descobrir isso durante a janela de troca custou ~50s de indisponibilidade na Task 8.
+> 3. Nesse `config.environment`, o nome **à esquerda do `=`** tem que ser o mesmo usado no
+>    `${...}` do compose — **não** o nome final da variável dentro do container. Ou seja:
+>    se o compose diz `DATABASE_URL: ${ALBUMCOPA_DATABASE_URL}`, a linha correta é
+>    `ALBUMCOPA_DATABASE_URL=[[ALBUMCOPA_DATABASE_URL]]`. Errar isso deixa a variável vazia
+>    e o container entra em crash loop, com 502 no domínio até corrigir.
+> Descobrir o item 2 custou ~50s de indisponibilidade na Task 8; o item 3, ~95s na Task 9.
 
 
 
@@ -1675,7 +1690,12 @@ intacto.
 >    `auto_pull: false` na sua config (via `UpdateStack` na API).
 > 2. Criar a Variable com `CreateVariable` **não injeta nada sozinho**. É preciso também
 >    preencher `config.environment` da Stack referenciando com a sintaxe `[[NOME_DA_VAR]]`.
-> Descobrir isso durante a janela de troca custou ~50s de indisponibilidade na Task 8.
+> 3. Nesse `config.environment`, o nome **à esquerda do `=`** tem que ser o mesmo usado no
+>    `${...}` do compose — **não** o nome final da variável dentro do container. Ou seja:
+>    se o compose diz `DATABASE_URL: ${ALBUMCOPA_DATABASE_URL}`, a linha correta é
+>    `ALBUMCOPA_DATABASE_URL=[[ALBUMCOPA_DATABASE_URL]]`. Errar isso deixa a variável vazia
+>    e o container entra em crash loop, com 502 no domínio até corrigir.
+> Descobrir o item 2 custou ~50s de indisponibilidade na Task 8; o item 3, ~95s na Task 9.
 
 
 
