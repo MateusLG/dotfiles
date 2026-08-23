@@ -1151,6 +1151,16 @@ porta 8000 volta a ser da unit systemd, e o nginx nem percebe a troca.
 
 ## Task 9: album-copa em container
 
+> **Aprendido na Task 8 — vale para toda stack de app desta migração:**
+> 1. A Build do Komodo gera imagem **local, sem registry**. Isso quebra o `Compose Pull`
+>    automático (`pull access denied`) e faz o primeiro deploy falhar. A stack precisa de
+>    `auto_pull: false` na sua config (via `UpdateStack` na API).
+> 2. Criar a Variable com `CreateVariable` **não injeta nada sozinho**. É preciso também
+>    preencher `config.environment` da Stack referenciando com a sintaxe `[[NOME_DA_VAR]]`.
+> Descobrir isso durante a janela de troca custou ~50s de indisponibilidade na Task 8.
+
+
+
 Já tem Dockerfile (herança do Railway). Primeira app de repo privado — usa o provider da
 Task 3.
 
@@ -1284,6 +1294,16 @@ sudo systemctl disable albumcopa
 ---
 
 ## Task 10: lgmateus em container
+
+> **Aprendido na Task 8 — vale para toda stack de app desta migração:**
+> 1. A Build do Komodo gera imagem **local, sem registry**. Isso quebra o `Compose Pull`
+>    automático (`pull access denied`) e faz o primeiro deploy falhar. A stack precisa de
+>    `auto_pull: false` na sua config (via `UpdateStack` na API).
+> 2. Criar a Variable com `CreateVariable` **não injeta nada sozinho**. É preciso também
+>    preencher `config.environment` da Stack referenciando com a sintaxe `[[NOME_DA_VAR]]`.
+> Descobrir isso durante a janela de troca custou ~50s de indisponibilidade na Task 8.
+
+
 
 A única que exige mudança de configuração no código da app.
 
@@ -1449,6 +1469,16 @@ sudo systemctl disable lgmateus
 ---
 
 ## Task 11: os48/gestao em container
+
+> **Aprendido na Task 8 — vale para toda stack de app desta migração:**
+> 1. A Build do Komodo gera imagem **local, sem registry**. Isso quebra o `Compose Pull`
+>    automático (`pull access denied`) e faz o primeiro deploy falhar. A stack precisa de
+>    `auto_pull: false` na sua config (via `UpdateStack` na API).
+> 2. Criar a Variable com `CreateVariable` **não injeta nada sozinho**. É preciso também
+>    preencher `config.environment` da Stack referenciando com a sintaxe `[[NOME_DA_VAR]]`.
+> Descobrir isso durante a janela de troca custou ~50s de indisponibilidade na Task 8.
+
+
 
 Por último entre as apps porque é a que tem cliente validando dado. Repo em org
 (`KodiumAI`), e o único que ainda dependia do `gh` do `mateus` — aqui essa exceção morre.
@@ -1638,6 +1668,16 @@ intacto.
 ---
 
 ## Task 12: ericsongomes com Build próprio
+
+> **Aprendido na Task 8 — vale para toda stack de app desta migração:**
+> 1. A Build do Komodo gera imagem **local, sem registry**. Isso quebra o `Compose Pull`
+>    automático (`pull access denied`) e faz o primeiro deploy falhar. A stack precisa de
+>    `auto_pull: false` na sua config (via `UpdateStack` na API).
+> 2. Criar a Variable com `CreateVariable` **não injeta nada sozinho**. É preciso também
+>    preencher `config.environment` da Stack referenciando com a sintaxe `[[NOME_DA_VAR]]`.
+> Descobrir isso durante a janela de troca custou ~50s de indisponibilidade na Task 8.
+
+
 
 Fecha o provisório da Task 5: o container passa a carregar o próprio build, e o
 `deploy ericsongomes` deixa de ser necessário.
