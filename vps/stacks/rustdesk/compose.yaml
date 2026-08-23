@@ -1,0 +1,21 @@
+services:
+  hbbs:
+    container_name: hbbs
+    image: rustdesk/rustdesk-server:latest
+    command: hbbs -r srv1.lgmateus.com:21117
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      ## Caminho absoluto: o Komodo roda o compose de outro run directory,
+      ## nao de ~/rustdesk, entao ./data nao resolveria certo.
+      ## Contem o par de chaves do servidor (id_ed25519) - nao mexer.
+      - /home/mateus/rustdesk/data:/root
+
+  hbbr:
+    container_name: hbbr
+    image: rustdesk/rustdesk-server:latest
+    command: hbbr
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - /home/mateus/rustdesk/data:/root
