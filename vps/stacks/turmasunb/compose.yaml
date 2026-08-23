@@ -15,7 +15,7 @@ services:
       BACKUP_TOKEN: ${TURMASUNB_BACKUP_TOKEN}
       BACKUP_PATH: /app/backups
       BACKUP_INTERVAL_HOURS: 24
-      BACKUP_MAX_FILES: 14
+      BACKUP_MAX_FILES: 7
     volumes:
       - turmasunb-backups:/app/backups
     extra_hosts:
