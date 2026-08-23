@@ -1,0 +1,34 @@
+services:
+  ericsongomes:
+    image: nginxinc/nginx-unprivileged:alpine
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      ## Build gerado pelo `deploy ericsongomes` (vira Build proprio na Task 12).
+      - /var/www/ericsongomes:/srv/www:ro
+    networks:
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.ericsongomes.rule=Host(`ericsongomes.com.br`)
+      - traefik.http.routers.ericsongomes.entrypoints=websecure
+      - traefik.http.routers.ericsongomes.tls.options=cf-aop@file
+      - traefik.http.services.ericsongomes.loadbalancer.server.port=8080
+      - traefik.http.routers.ericsongomes-www.rule=Host(`www.ericsongomes.com.br`)
+      - traefik.http.routers.ericsongomes-www.entrypoints=websecure
+      - traefik.http.routers.ericsongomes-www.tls.options=cf-aop@file
+      - traefik.http.routers.ericsongomes-www.middlewares=redirect-to-apex@file
+      - traefik.http.routers.ericsongomes-www.service=ericsongomes
+
+networks:
+  edge:
+    external: true
