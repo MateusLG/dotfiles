@@ -1,0 +1,58 @@
+## Komodo Core + Mongo + Periphery.
+## Bootstrap: e o unico compose que nao e gerenciado pelo proprio Komodo.
+## Fonte da verdade aqui; a copia viva fica em /etc/komodo/komodo/compose.yaml.
+services:
+  mongo:
+    image: mongo:8
+    labels:
+      komodo.skip:
+    command: --quiet --wiredTigerCacheSizeGB 0.25
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${KOMODO_DATABASE_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${KOMODO_DATABASE_PASSWORD}
+
+  core:
+    image: ghcr.io/moghtech/komodo-core:${COMPOSE_KOMODO_IMAGE_TAG:-2}
+    init: true
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    ports:
+      ## Temporario: acesso por tunel SSH ate o Traefik assumir (Task 6).
+      - "127.0.0.1:9120:9120"
+    env_file: ./compose.env
+    environment:
+      KOMODO_DATABASE_ADDRESS: mongo:27017
+    volumes:
+      - keys:/config/keys
+      - ${COMPOSE_KOMODO_BACKUPS_PATH}:/backups
+      - /etc/komodo/syncs:/syncs
+    networks:
+      - default
+      - edge
+
+  periphery:
+    image: ghcr.io/moghtech/komodo-periphery:${COMPOSE_KOMODO_IMAGE_TAG:-2}
+    init: true
+    restart: unless-stopped
+    depends_on:
+      - core
+    env_file: ./compose.env
+    volumes:
+      - keys:/config/keys
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /proc:/proc
+      - /etc/komodo:/etc/komodo
+
+volumes:
+  mongo-data:
+  mongo-config:
+  keys:
+
+networks:
+  edge:
+    external: true
