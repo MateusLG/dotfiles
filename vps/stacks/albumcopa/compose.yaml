@@ -1,0 +1,34 @@
+services:
+  albumcopa:
+    image: albumcopa:latest
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    ports:
+      ## Loopback pro nginx continuar apontando pra mesma porta ate o corte (Task 6).
+      - "127.0.0.1:8001:8001"
+    environment:
+      DATABASE_URL: ${ALBUMCOPA_DATABASE_URL}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - edge
+      - apps
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.albumcopa.rule=Host(`album.lgmateus.com`)
+      - traefik.http.routers.albumcopa.entrypoints=websecure
+      - traefik.http.routers.albumcopa.tls.options=cf-aop@file
+      - traefik.http.services.albumcopa.loadbalancer.server.port=8001
+
+networks:
+  edge:
+    external: true
+  apps:
+    external: true
