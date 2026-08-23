@@ -2,7 +2,9 @@ services:
   socket-proxy:
     image: tecnativa/docker-socket-proxy:0.3.0
     restart: unless-stopped
-    read_only: true
+    ## read_only:true quebra o start: a imagem gera /usr/local/etc/haproxy/haproxy.cfg
+    ## a partir de um template no mesmo diretorio, via sed, a cada boot (ver entrypoint
+    ## da imagem). Sem escrita ali o container fica em crash loop.
     environment:
       CONTAINERS: 1
       POST: 0
