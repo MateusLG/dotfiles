@@ -11,6 +11,9 @@ e do systemd+nginx pro Komodo+Traefik em containers em agosto/2026).
 | os48 / CREA  | `gestao`        | 8002               | crea.lglabs.tech                                |
 | ericsongomes | `ericsongomes`  | 8080               | ericsongomes.com.br, www.ericsongomes.com.br    |
 
+A stack do `gestao` tem **dois** containers: a app e o sidecar `jobs`, que roda as tarefas
+agendadas (ver seção própria). As demais têm um só.
+
 Cada app é uma **Stack** do Komodo: compose versionado em `stacks/<app>/compose.yaml`,
 imagem construída por uma **Build** do Komodo a partir do repo da própria app (não deste
 repo de dotfiles) e publicada como `<app>:latest` (mais uma tag com o hash do commit).
@@ -82,7 +85,11 @@ assinatura HMAC (`X-Hub-Signature-256` contra `KOMODO_WEBHOOK_SECRET`), não por
 
 ## Segredos (Variables do Komodo)
 
-Não existe mais `.env` no disco das apps. Os **33 Variables** cadastrados no Komodo
+As apps não leem mais `.env` do disco — a configuração vem do Komodo no momento do deploy.
+Os arquivos antigos ainda existem em `/srv/turmasunb/.env` e `/srv/albumcopa/backend/.env`,
+junto do resto do material de rollback, mas nenhum container os enxerga.
+
+Os **33 Variables** cadastrados no Komodo
 (turmasunb: 6, album-copa: 1, gestao: 26) são referenciados no `environment:` de cada
 Stack com a sintaxe `NOME=[[NOME_DA_VARIABLE]]` e injetados na hora do deploy. Inclui,
 no caso do gestao, as variáveis `VITE_*` do frontend — que são assadas no bundle em
