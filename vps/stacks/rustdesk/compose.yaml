@@ -7,9 +7,9 @@ services:
     restart: unless-stopped
     volumes:
       ## Caminho absoluto: o Komodo roda o compose de outro run directory,
-      ## nao de ~/rustdesk, entao ./data nao resolveria certo.
+      ## nao de ~/infra/rustdesk, entao ./data nao resolveria certo.
       ## Contem o par de chaves do servidor (id_ed25519) - nao mexer.
-      - /home/mateus/rustdesk/data:/root
+      - /home/mateus/infra/rustdesk/data:/root
 
   hbbr:
     container_name: hbbr
@@ -18,4 +18,4 @@ services:
     network_mode: host
     restart: unless-stopped
     volumes:
-      - /home/mateus/rustdesk/data:/root
+      - /home/mateus/infra/rustdesk/data:/root

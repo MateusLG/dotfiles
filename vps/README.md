@@ -162,6 +162,21 @@ tabela própria `f2b-table`, não conflita com o ufw).
 > ativo porém **inútil** — nunca casa um ataque real. Testado banindo `127.0.0.1`
 > com `ignoreself=false` temporário.
 
+### Home (layout)
+
+Organizada por **papel**, não por ferramenta — nome de ferramenta vira mentira no dia em
+que a ferramenta muda:
+
+```
+~/dev/<cliente>/<projeto>   trabalho (kodium/, embratur/, pessoal/)
+~/infra/                    dotfiles, rustdesk
+~/docs/                     runbooks
+~/backups/                  dumps
+```
+
+`bin/backup-vps.sh` percorre esses caminhos para inventariar os repos — mudar o layout
+pede ajustar os globs lá.
+
 ### Sistema
 
 - Timezone `America/Sao_Paulo`.

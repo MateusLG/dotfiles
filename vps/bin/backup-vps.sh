@@ -118,16 +118,20 @@ done > "$INV/crontabs.txt"
 { echo "# porta -> processo"; sudo ss -tlnp; } > "$INV/listening-ports.txt" 2>&1 || true
 
 # repos: onde o codigo vive, para reclonar no destino. As 5 apps nao tem mais
-# clone de trabalho na VPS (o Komodo builda direto do GitHub); so o proprio
-# dotfiles continua clonado aqui.
+# clone de trabalho na VPS (o Komodo builda direto do GitHub); o que sobra
+# clonado aqui e o dotfiles e os repos de trabalho em ~/dev e ~/codex.
 {
-  d=/home/mateus/dotfiles
-  if [ -d "$d/.git" ]; then
+  for d in /home/mateus/infra/dotfiles \
+           /home/mateus/dev/*/*/ \
+           /home/mateus/dev/*/*/sistemas/*/*/ \
+           /home/mateus/codex/*/; do
+    d=${d%/}
+    [ -d "$d/.git" ] || continue
     printf '%s\n  remote: %s\n  branch: %s\n  head:   %s\n' "$d" \
       "$(git -C "$d" remote get-url origin 2>/dev/null)" \
       "$(git -C "$d" rev-parse --abbrev-ref HEAD 2>/dev/null)" \
       "$(git -C "$d" rev-parse HEAD 2>/dev/null)"
-  fi
+  done
 } > "$INV/repos.txt"
 
 # --------------------------------------------------------------------- /etc ---
@@ -299,13 +303,13 @@ done
 cp -a /home/mateus/.config "$HOMEW/config"
 # dotfiles: repo esta no GitHub, so o que nao foi commitado importa
 mkdir -p "$HOMEW/dotfiles-uncommitted"
-git -C /home/mateus/dotfiles status --porcelain > "$HOMEW/dotfiles-uncommitted/status.txt"
-git -C /home/mateus/dotfiles diff > "$HOMEW/dotfiles-uncommitted/uncommitted.diff"
+git -C /home/mateus/infra/dotfiles status --porcelain > "$HOMEW/dotfiles-uncommitted/status.txt"
+git -C /home/mateus/infra/dotfiles diff > "$HOMEW/dotfiles-uncommitted/uncommitted.diff"
 while IFS= read -r line; do
   f=${line:3}
-  [ -f "/home/mateus/dotfiles/$f" ] || continue
+  [ -f "/home/mateus/infra/dotfiles/$f" ] || continue
   mkdir -p "$HOMEW/dotfiles-uncommitted/files/$(dirname "$f")"
-  cp -a "/home/mateus/dotfiles/$f" "$HOMEW/dotfiles-uncommitted/files/$f"
+  cp -a "/home/mateus/infra/dotfiles/$f" "$HOMEW/dotfiles-uncommitted/files/$f"
 done < "$HOMEW/dotfiles-uncommitted/status.txt"
 tar czf "$DEST/home.tar.gz" -C "$WORK" home
 rm -rf "$HOMEW"
