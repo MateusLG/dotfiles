@@ -33,6 +33,16 @@ services:
       COBLI_WEBHOOK_SECRET: ${GESTAO_COBLI_WEBHOOK_SECRET}
       TRACKING_JOB_TOKEN: ${GESTAO_TRACKING_JOB_TOKEN}
       COBLI_SYNC_TOKEN: ${GESTAO_COBLI_SYNC_TOKEN}
+      ## Adicionadas ao .env de producao em 23/08 22:06 (apos o brief desta task
+      ## ser escrito), com restart da unit systemd na hora - nomes batem com os
+      ## campos reais de app/config.py (rastreamento_token/ativo,
+      ## conformidade_token/ativa), ao contrario das TRACKING_*/COBLI_WEBHOOK_*
+      ## acima, que sao residuo de um nome antigo e nao correspondem a nenhum
+      ## campo do config.py atual (extra="ignore" no pydantic-settings).
+      RASTREAMENTO_TOKEN: ${GESTAO_RASTREAMENTO_TOKEN}
+      RASTREAMENTO_ATIVO: ${GESTAO_RASTREAMENTO_ATIVO}
+      CONFORMIDADE_TOKEN: ${GESTAO_CONFORMIDADE_TOKEN}
+      CONFORMIDADE_ATIVA: ${GESTAO_CONFORMIDADE_ATIVA}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
