@@ -21,8 +21,9 @@ Usuário comum `mateus` no grupo `sudo`. Os arquivos espelham os caminhos reais 
   Komodo faz pull e sobe.
 - [`bin/ufw-cloudflare.sh`](bin/ufw-cloudflare.sh) — restringe `80/443` às faixas de IP da Cloudflare.
 - [`bin/pg-backup.sh`](bin/pg-backup.sh) — dump diário dos bancos Postgres (`pg-backup.timer`).
-- [`bin/backup-migracao.sh`](bin/backup-migracao.sh) — snapshot usado como rede de
-  segurança durante a migração systemd+nginx → Komodo+Traefik.
+- [`bin/backup-vps.sh`](bin/backup-vps.sh) — backup do insubstituível (bancos,
+  banco do Komodo, secrets, volumes docker com dado, mundo do Minecraft, chave do
+  rustdesk, configs de sistema). Código das apps não entra — está no GitHub.
 - [`mobile-claude.md`](mobile-claude.md) — acesso ao Claude Code pelo celular (mosh + tmux + Termius).
 - `etc/systemd/system/{pg-backup.service,pg-backup.timer}` → as únicas units de app que
   seguem em systemd (as 4 apps migradas foram removidas daqui e do host).
@@ -131,6 +132,18 @@ pra `/var/backups/postgres/`, com retenção de **14 dias**. Roda como o user `p
 granular ao snapshot **semanal** da Hostinger (disaster recovery): protege contra erro de
 migração / delete / corrupção sem rolar a VPS inteira uma semana. Restaurar:
 `pg_restore -d <db> /var/backups/postgres/<db>-<data>.dump`.
+
+### Backup de tudo (disaster recovery manual)
+
+[`bin/backup-vps.sh`](bin/backup-vps.sh) é o que sobra pra reconstruir a VPS do zero se
+o disco morrer: todos os bancos Postgres do host, o banco do Komodo (backup nativo via
+`km database backup`, cobre Stacks/Builds/Procedures/Variables — inclusive as 33
+Variables com senha de banco, tokens e o PAT do GitHub), `compose.env`/`api.env` do
+Komodo, os volumes docker com dado real (backups do turmasunb, chaves Ed25519
+Core↔Periphery do Komodo), `/etc/ssl/cloudflare`, o mundo do Minecraft e os dados do
+RustDesk (chave do servidor). Não é agendado — roda sob demanda antes de mexer grande na
+VPS. Seguro rodar com tudo no ar: nenhum container é parado, só o `minecraft.service`
+pausa por alguns segundos pra consistência do mundo.
 
 ### Acesso mobile (mosh + tmux)
 

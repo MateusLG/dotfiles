@@ -152,6 +152,9 @@ que vai rodar o sistema em outro servidor, recebe o agendamento junto com o
 - **Backup**: dump diário dos bancos (`turmasunb`, `albumcopa`) via `bin/pg-backup.sh` +
   `pg-backup.timer`, que **continuam em systemd** (retenção 14 dias em
   `/var/backups/postgres/`). Ver [`README.md`](README.md).
+- **Backup completo sob demanda**: `bin/backup-vps.sh` cobre todos os bancos do host, o
+  banco do Komodo (Stacks/Builds/Variables), secrets, volumes docker com dado e o mundo
+  do Minecraft — ver seção própria no [`README.md`](README.md).
 
 ## Logs / status
 
