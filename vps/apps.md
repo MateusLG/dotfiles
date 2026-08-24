@@ -1,128 +1,172 @@
 # apps self-hosted
 
-Apps self-hosted nesta VPS, atrás da Cloudflare (migrados do Railway em junho/2026).
+Apps self-hosted nesta VPS, atrás da Cloudflare (migradas do Railway em junho/2026,
+e do systemd+nginx pro Komodo+Traefik em containers em agosto/2026).
 
-| App          | Stack                       | Porta | Serviço             | User (sistema) | Domínio              |
-|--------------|-----------------------------|-------|---------------------|----------------|----------------------|
-| lgmateus     | Next.js 16 (Node)           | 3000  | `lgmateus.service`  | `lgmateus`     | lgmateus.com         |
-| turmasunb    | FastAPI (Python)            | 8000  | `turmasunb.service` | `turmasunb`    | turmasunb.com        |
-| album-copa   | FastAPI + Vite (serve dist) | 8001  | `albumcopa.service` | `albumcopa`    | album.lgmateus.com   |
-| os48 / CREA  | FastAPI + Vite              | 8002  | `gestao.service`    | `gestao`       | crea.lglabs.tech     |
-| ericsongomes | Next.js (static export)     | —     | — (nginx serve)     | — (build do `mateus`) | ericsongomes.com.br |
+| App          | Stack (Komodo) | Porta (container) | Domínio(s)                                    |
+|--------------|-----------------|--------------------|------------------------------------------------|
+| lgmateus     | `lgmateus`      | 3000               | lgmateus.com, www.lgmateus.com                  |
+| turmasunb    | `turmasunb`     | 8000               | turmasunb.com, www.turmasunb.com                |
+| album-copa   | `albumcopa`     | 8001               | album.lgmateus.com                              |
+| os48 / CREA  | `gestao`        | 8002               | crea.lglabs.tech                                |
+| ericsongomes | `ericsongomes`  | 8080               | ericsongomes.com.br, www.ericsongomes.com.br    |
 
-## Isolamento (importante)
+Cada app é uma **Stack** do Komodo: compose versionado em `stacks/<app>/compose.yaml`,
+imagem construída por uma **Build** do Komodo a partir do repo da própria app (não deste
+repo de dotfiles) e publicada como `<app>:latest` (mais uma tag com o hash do commit).
 
-Cada app roda como **user de sistema dedicado, sem sudo**, com código em
-**`/srv/<app>`** (não em `~/apps` — antes rodavam como `mateus`, que tem `NOPASSWD`,
-o que tornava qualquer RCE num app uma escalada direta pra root). Cada user tem **mise
-próprio** em `/srv/<app>/.local/bin/mise`.
+## Isolamento (container)
 
-As units têm um drop-in `*.service.d/10-hardening.conf` com sandbox systemd:
-`NoNewPrivileges=yes` (mata escalada via `sudo`/setuid mesmo que o user tivesse),
-`ProtectSystem=strict`, `ProtectHome=yes` (o processo não enxerga `/home/mateus` → a
-chave SSH fica protegida), `ReadWritePaths=/srv/<app>`, etc. Um app comprometido não
-vira root, não lê a chave SSH e não toca nos outros apps.
+Cada app roda como container **não-root** (`node` no lgmateus; UID `10001` em
+turmasunb/albumcopa/gestao; `101` no ericsongomes), com `cap_drop: ALL`,
+`no-new-privileges` e `read_only: true` na raiz (exceto turmasunb, que escreve backup
+em volume) — os diretórios que a app precisa escrever viram `tmpfs`. Cada container só
+entra nas redes Docker que precisa:
 
-Os apps escutam só em `127.0.0.1`; quem publica é o nginx.
+- **`edge`**: todos os 5, é a rede que o Traefik enxerga (`exposedByDefault: false` — só
+  publica quem tem `traefik.enable=true`).
+- **`apps`**: só turmasunb, album-copa e gestao, que falam com o Postgres do host via
+  `host.docker.internal` (extra_hosts com `host-gateway`).
+
+Os diretórios `/srv/<app>` e os users de sistema (`lgmateus`, `turmasunb`, `albumcopa`,
+`gestao`) do mundo pré-container **continuam no disco**, por precaução — é o último
+rollback possível caso algo dê errado com os containers. `/srv/gestao` é a exceção: além
+de rollback, ele é **usado ativamente hoje** pelos jobs de rastreamento/conformidade (ver
+seção própria abaixo). Os outros três (`/srv/lgmateus`, `/srv/turmasunb`,
+`/srv/albumcopa`) e `/srv/ericsongomes` não são mais tocados por nada em produção.
 
 ## Fluxo de uma requisição
 
 ```
 navegador → Cloudflare (proxy laranja, TLS na borda)
-          → VPS:443 nginx (Origin Certificate, Full strict)   [ufw: 80/443 só de IPs da CF]
-          → 127.0.0.1:{3000,8000,8001,8002} app (systemd, user dedicado)
-          → Postgres local (turmasunb, album-copa, gestao/crea_demo)
+          → ufw: 80/443 só das faixas de IP da Cloudflare
+          → VPS:443 Traefik (Origin Certificate; mTLS via Authenticated Origin Pulls
+            obrigatório — tls.options=cf-aop@file — nos 5 domínios)
+          → container na rede `edge` (roteado por Host() + labels do compose)
+          → Postgres nativo do host, pela rede `apps` (turmasunb, album-copa, gestao)
 ```
+
+Sem nginx no caminho: quem termina TLS, roteia por domínio e fala com o Docker é o
+Traefik (`stacks/traefik/`), via um `docker-socket-proxy` somente-leitura — o Traefik
+nunca tem o socket do Docker montado direto.
 
 ## Deploy
 
-```sh
-deploy lgmateus       # git pull + npm ci + build
-deploy turmasunb      # git pull + uv pip install
-deploy albumcopa      # git pull + uv sync (backend) + npm build (frontend)
-deploy os48           # git pull + uv sync + dump do banco + alembic + build
-deploy ericsongomes   # git pull + build + rsync pro /var/www (site e calculadora)
-deploy all            # todos acima
+`git push` no repo da própria app dispara um **webhook do GitHub** apontando para
+`https://komodo.lgmateus.com/listener/github/procedure/deploy-<app>/main`. Isso executa
+a Procedure `deploy-<app>` no Komodo, em dois estágios sequenciais:
+
+```
+RunBuild (rebuilda a imagem <app>:latest do commit novo)
+  → DeployStack (docker compose up -d com a imagem nova)
 ```
 
-(`bin/deploy.sh`; symlink `~/.local/bin/deploy`.) O script roda o build **como o user
-dedicado** (`sudo -u <app>` com o mise daquele user) e reinicia o serviço + health check.
+Repos com webhook configurado: `lgmateus`, `turmasunb`, `album-copa`, `site-ericson` (do
+`MateusLG`) e `OS48-CREA` (da org `KodiumAI`, para o gestao).
 
-### Autenticação no GitHub
+Este repo (**`dotfiles`**) **não tem webhook** — um push aqui pode afetar várias Stacks
+ao mesmo tempo (compose, config do Traefik, etc.) e não há mapeamento automático de
+arquivo pra Stack. Redeploy depois de mexer em `dotfiles` é manual, pela UI ou API do
+Komodo (ver [`README.md`](README.md) para o passo a passo de rollback/redeploy).
 
-Todo repo aqui é privado, e o user de sistema do app não tem credencial nenhuma — por isso
-o `git pull` de lgmateus/turmasunb/albumcopa ficou quebrado até **2026-08-05**,
-pedindo usuário e senha (que o GitHub não aceita mais em HTTPS desde 2021).
+### Painel do Komodo
 
-Cada um desses apps tem hoje **deploy key read-only própria** em `/srv/<app>/.ssh/id_ed25519`,
-registrada no repo como `vps-srv1752180-<app>`, com o remote em SSH. O pull continua rodando
-como o user do app — nenhum app precisa (nem enxerga) a credencial do `mateus`.
+`komodo.lgmateus.com`, atrás do **Cloudflare Access** (login por one-time PIN no e-mail
+autorizado, sem IdP externo, sessão de 24h). O path `/listener` (onde o GitHub bate com
+os webhooks) está em **Bypass** na política do Access — ele valida a entrega pela
+assinatura HMAC (`X-Hub-Signature-256` contra `KOMODO_WEBHOOK_SECRET`), não por login.
 
-```sh
-sudo -u <app> ssh-keygen -t ed25519 -N '' -f /srv/<app>/.ssh/id_ed25519 -C vps-srv1752180-<app>
-gh repo deploy-key add /srv/<app>/.ssh/id_ed25519.pub -R <owner/repo> -t vps-srv1752180-<app>
-sudo -u <app> git -C /srv/<app> remote set-url origin git@github.com:<owner/repo>.git
-```
+## Segredos (Variables do Komodo)
 
-Exceção: **os48** autentica pelo `gh` do `mateus` (pull e build como ele; o serviço `gestao`
-só lê o diretório). Era a única saída quando a org KodiumAI bloqueava deploy key — hoje ela
-permite, então dá pra migrar pro padrão acima quando der.
+Não existe mais `.env` no disco das apps. Os **33 Variables** cadastrados no Komodo
+(turmasunb: 6, album-copa: 1, gestao: 26) são referenciados no `environment:` de cada
+Stack com a sintaxe `NOME=[[NOME_DA_VARIABLE]]` e injetados na hora do deploy. Inclui,
+no caso do gestao, as variáveis `VITE_*` do frontend — que são assadas no bundle em
+**build time**, então entram como `build_args` da Build, não só como `environment` da
+Stack.
 
-## Logs / status
+## Jobs do gestao (rastreamento e conformidade)
 
-```sh
-systemctl status lgmateus turmasunb albumcopa gestao
-journalctl -u albumcopa -f
-```
+Duas tarefas **continuam em systemd no host**, fora do Komodo:
+`gestao-rastreamento.timer` (a cada minuto) e `gestao-conformidade.timer` (de hora em
+hora). Ambas rodam `rastreabilidade-job.py` usando o virtualenv em
+`/srv/gestao/repo/gestao/backend/.venv` e falam por HTTP com o container do gestao
+(`127.0.0.1:8002`) — não dependem da unit `gestao.service` (removida) nem entram no
+`Requires=` de nada. É por causa dessas duas units que **`/srv/gestao` não pode ser
+apagado** ainda: migrar os dois jobs para **Procedures agendadas no Komodo** é o que
+liberaria remover o diretório de vez.
 
 ## TLS / Cloudflare
 
 - Proxy **laranja** nos domínios; SSL/TLS mode **Full (strict)**.
-- nginx usa **Cloudflare Origin Certificates** em `/etc/ssl/cloudflare/` — **não
-  versionados** (a key é segredo). Regenerar em: painel Cloudflare → SSL/TLS → Origin
-  Server → Create Certificate.
-- `lgmateus.{crt,key}` é **wildcard `*.lgmateus.com`** → cobre `album.lgmateus.com` sem
-  cert novo. `turmasunb.{crt,key}` cobre `turmasunb.com`.
-- DNS: registros A → IP da VPS (`179.198.127.45`), **proxied**. `album` é A próprio
-  (subdomínio).
+- O Traefik usa os mesmos **Cloudflare Origin Certificates** de antes, agora montados
+  read-only em `/etc/ssl/cloudflare/` do host → `/certs` no container
+  (`stacks/traefik/compose.yaml`) — **não versionados** (a key é segredo). Regenerar em:
+  painel Cloudflare → SSL/TLS → Origin Server → Create Certificate.
+- `lgmateus.{crt,key}` é wildcard `*.lgmateus.com` (cobre `album.lgmateus.com`);
+  `turmasunb.{crt,key}` cobre `turmasunb.com`; `lglabs.tech.{crt,key}` cobre
+  `crea.lglabs.tech`; `ericsongomes.{crt,key}` cobre `ericsongomes.com.br`.
+- DNS: registros A → IP da VPS (`179.198.127.45`), **proxied**. `album` e `komodo` são A
+  próprios (subdomínios de `lgmateus.com`).
 - **Origem fechada em duas camadas:** `ufw` libera `80/443` só das faixas da Cloudflare
-  (`bin/ufw-cloudflare.sh`) **e** os vhosts exigem o cert de cliente da CF via
-  Authenticated Origin Pulls (`ssl_verify_client on`). Acesso direto na origem → `400`.
-  Detalhes e rollout no [`README.md`](README.md).
-- IP real do visitante restaurado no log (`bin/nginx-cloudflare-realip.sh`).
+  (`bin/ufw-cloudflare.sh`) **e** o Traefik exige o cert de cliente da CF via
+  Authenticated Origin Pulls (`tls.options=cf-aop@file`, validando contra
+  `authenticated_origin_pull_ca.pem`) em **todos os 5 domínios** — acesso direto na
+  origem devolve alerta TLS de certificado exigido, não HTTP. Detalhes no
+  [`README.md`](README.md).
+- O IP real do visitante chega ao Traefik via `forwardedHeaders.trustedIPs` (as faixas
+  da Cloudflare, hardcoded em `stacks/traefik/traefik.yml`) — sem isso o log e os
+  middlewares só veriam o IP da borda da CF.
 
-## Postgres (local, apt — só loopback, scram)
+## Postgres (local, apt — só loopback do host + rede Docker `apps`, scram)
 
 - **turmasunb**: db/role `turmasunb`, tabela `links` (PK `materia+turma`); estrutura das
-  turmas vem do `data.json` versionado. Carrega em memória no boot → **reiniciar o
-  serviço** após mexer no banco. `.env` em `/srv/turmasunb/.env`.
+  turmas vem do `data.json` versionado. Carrega em memória no boot → **redeploy da
+  Stack** após mexer no banco.
 - **album-copa**: db/role `albumcopa` (tabelas `usuario`/`figurinha`/`colecao_usuario`/
-  `audit_log`), schema via **alembic** (`alembic upgrade head`). Auth é só header
-  `X-Username` (sem senha). `.env` em `/srv/albumcopa/backend/.env` (só `DATABASE_URL`).
-- Migração Railway→local sempre por `\copy` (Railway PG18 vs cliente PG16 local não faz
-  `pg_dump` cross-version). Lembrar de resetar as sequences após carregar dados:
-  ```sh
-  psql "$RAILWAY" -c "\copy <tabela> TO STDOUT" | psql "$LOCAL" -c "\copy <tabela> FROM STDIN"
-  ```
-- **Backup**: dump diário dos bancos (`turmasunb`, `albumcopa`) via
-  `bin/pg-backup.sh` + `pg-backup.timer` (retenção 14 dias em `/var/backups/postgres/`).
-  Ver [`README.md`](README.md).
+  `audit_log`), schema via **alembic** (`alembic upgrade head`, roda no container).
+  Auth é só header `X-Username` (sem senha).
+- **gestao**: db `crea_demo`, schema via alembic; contém dado de cliente em validação —
+  ver `vps-os48-db-reset.md` na memória sobre reset/reseed.
+- Postgres escuta em `listen_addresses='*'` (`etc/postgresql/10-docker.conf`); o controle
+  de acesso real é `pg_hba.conf` (scram, faixa `172.16.0.0/12` — todas as bridges do
+  Docker) e `ufw` (5432 fechado pra internet, liberado só para essa faixa).
+- **Backup**: dump diário dos bancos (`turmasunb`, `albumcopa`) via `bin/pg-backup.sh` +
+  `pg-backup.timer`, que **continuam em systemd** (retenção 14 dias em
+  `/var/backups/postgres/`). Ver [`README.md`](README.md).
+
+## Logs / status
+
+```sh
+docker ps --format 'table {{.Names}}\t{{.Status}}'
+docker logs -f albumcopa-albumcopa-1
+```
+
+Ou pela UI do Komodo (`komodo.lgmateus.com`): página da Stack → aba Log/Containers.
 
 ## Reproduzir do zero (resumo)
 
-Fora do `setup.sh` (envolve segredos e passos manuais). Por app:
+Fora do `setup.sh` (envolve segredos e passos manuais) e do bootstrap do Komodo
+(`komodo/compose.yaml`, aplicado uma vez direto no host — é o único compose que o
+próprio Komodo não gerencia). Por app nova:
 
-1. `sudo apt-get install -y nginx postgresql`
-2. User: `sudo useradd --system --create-home --home-dir /srv/<app> --shell /usr/sbin/nologin <app>`
-3. Código em `/srv/<app>` (`chown -R <app>:<app>`); mise próprio do user
-   (`curl https://mise.run | sh` com `HOME=/srv/<app>`) + runtime (`mise use -g ...`).
-4. Build como o user: **turmasunb** `uv venv && uv pip install -r requirements.txt`;
-   **lgmateus** `npm ci && npm run build`; **album-copa** `uv sync` no backend +
-   `npm ci && npm run build` no frontend, criar role/db + `alembic upgrade head`.
-5. Postgres: role/db dedicados, `.env` do app com `DATABASE_URL` local; importar dados.
-6. Unit de `etc/systemd/system/<app>.service` + drop-in `…/10-hardening.conf`;
-   `systemctl enable --now <app>`.
-7. nginx: conf de `etc/nginx/sites-available/`, linkar em `sites-enabled`, remover o
-   `default`, instalar os Origin Certs, `nginx -t && systemctl reload nginx`.
-8. Firewall: `bin/ufw-cloudflare.sh` (libera 80/443 só da Cloudflare).
-9. Cloudflare: A record → VPS (proxied) + SSL mode Full (strict).
+1. Repo da app no GitHub, com um `Dockerfile` que builda uma imagem que escuta na porta
+   escolhida.
+2. Registrar o **Repo** no Komodo (provider `github.com`, conta com PAT fine-grained
+   `Contents: Read-only`) e criar a **Build** apontando pra ele.
+3. Criar as **Variables** que a app precisa (Komodo → Variables), com o nome que o
+   `environment:`/`build_args:` do compose referencia.
+4. Criar o diretório `stacks/<app>/compose.yaml` neste repo: rede `edge` (+ `apps` se
+   precisar de Postgres), labels do Traefik (`traefik.enable`, `Host()`,
+   `tls.options=cf-aop@file`, porta do `loadbalancer.server.port`), `cap_drop: ALL`,
+   `no-new-privileges`, `read_only` quando der.
+5. Criar a **Stack** no Komodo (repo=dotfiles, branch=main, `run_directory=stacks/<app>`,
+   `auto_pull: false` — o Build local não tem registry pra puxar de volta), apontar pro
+   `server_id` do `srv1`.
+6. Postgres (se precisar): role/db dedicados, Variable com a `DATABASE_URL` apontando
+   pra `host.docker.internal`; `extra_hosts: host-gateway` no compose.
+7. Criar a **Procedure** `deploy-<app>` (`RunBuild` → `DeployStack`,
+   `webhook_enabled: true`) e o webhook no GitHub apontando pra
+   `https://komodo.lgmateus.com/listener/github/procedure/deploy-<app>/main`.
+8. Cloudflare: A record → VPS (proxied), SSL mode Full (strict), Origin Certificate
+   novo se o domínio não estiver coberto por um wildcard já existente.
