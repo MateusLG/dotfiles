@@ -6,9 +6,6 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
-    ports:
-      ## Loopback pro nginx continuar apontando pra mesma porta ate o corte (Task 6).
-      - "127.0.0.1:8000:8000"
     environment:
       DATABASE_URL: ${TURMASUNB_DATABASE_URL}
       SEMESTER: ${TURMASUNB_SEMESTER}

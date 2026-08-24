@@ -9,9 +9,6 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-    ports:
-      ## Loopback pro nginx continuar apontando pra mesma porta ate o corte (Task 6).
-      - "127.0.0.1:8001:8001"
     environment:
       DATABASE_URL: ${ALBUMCOPA_DATABASE_URL}
     extra_hosts:

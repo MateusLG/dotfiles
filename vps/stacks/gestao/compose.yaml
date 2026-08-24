@@ -9,9 +9,6 @@ services:
     read_only: true
     tmpfs:
       - /tmp
-    ports:
-      ## Loopback pro nginx continuar apontando pra mesma porta ate o corte (Task 6).
-      - "127.0.0.1:8002:8002"
     environment:
       ENV: ${GESTAO_ENV}
       DATABASE_URL: ${GESTAO_DATABASE_URL}
