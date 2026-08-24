@@ -31,11 +31,12 @@ entra nas redes Docker que precisa:
 - **`apps`**: só turmasunb, album-copa e gestao, que falam com o Postgres do host via
   `host.docker.internal` (extra_hosts com `host-gateway`).
 
-Os diretórios `/srv/<app>` e os users de sistema (`lgmateus`, `turmasunb`, `albumcopa`)
-do mundo pré-container **continuam no disco**, por precaução — é o último rollback possível
-caso algo dê errado com os containers. Nada em produção os toca. `/srv/gestao` **foi
-removido** em 2026-08-24, depois que os jobs dele deixaram de depender daquele virtualenv
-(ver seção própria abaixo).
+Nada do mundo pré-container sobrou no disco. Os diretórios `/srv/<app>`, os users de
+sistema (`lgmateus`, `turmasunb`, `albumcopa`, `gestao`) e o `/var/www` foram removidos em
+2026-08-24, depois que os jobs do gestao deixaram de depender do virtualenv em `/srv`
+(ver seção própria abaixo). **`/srv` hoje contém apenas `minecraft`**, que segue em systemd
+e não faz parte deste conjunto. Rollback, a partir daqui, é reconstruir a partir do git —
+não existe mais interruptor.
 
 Nenhuma app publica porta no host. Os containers são alcançados só pelo Traefik, pela rede
 `edge`. As portas em `127.0.0.1` que existiram durante a transição — para o nginx continuar
