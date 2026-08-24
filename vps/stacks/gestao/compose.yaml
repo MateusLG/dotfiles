@@ -1,0 +1,53 @@
+services:
+  gestao:
+    image: gestao:latest
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    ports:
+      ## Loopback pro nginx continuar apontando pra mesma porta ate o corte (Task 6).
+      - "127.0.0.1:8002:8002"
+    environment:
+      ENV: ${GESTAO_ENV}
+      DATABASE_URL: ${GESTAO_DATABASE_URL}
+      SSO_SHARED_SECRET: ${GESTAO_SSO_SHARED_SECRET}
+      SESSION_SECRET: ${GESTAO_SESSION_SECRET}
+      SSO_TOKEN_MAX_AGE_SECONDS: ${GESTAO_SSO_TOKEN_MAX_AGE_SECONDS}
+      SESSION_TTL_HOURS: ${GESTAO_SESSION_TTL_HOURS}
+      COOKIE_NAME: ${GESTAO_COOKIE_NAME}
+      COOKIE_DOMAIN: ${GESTAO_COOKIE_DOMAIN}
+      COOKIE_SECURE: ${GESTAO_COOKIE_SECURE}
+      POST_SSO_REDIRECT: ${GESTAO_POST_SSO_REDIRECT}
+      DEV_FRONTEND_ORIGIN: ${GESTAO_DEV_FRONTEND_ORIGIN}
+      TRACKING_UI_ATIVO: ${GESTAO_TRACKING_UI_ATIVO}
+      TRACKING_PERMISSIONS_BY_PROFILE: ${GESTAO_TRACKING_PERMISSIONS_BY_PROFILE}
+      TRACKING_ATIVO: ${GESTAO_TRACKING_ATIVO}
+      COBLI_ATIVO: ${GESTAO_COBLI_ATIVO}
+      COBLI_API_KEY: ${GESTAO_COBLI_API_KEY}
+      COBLI_WEBHOOK_ATIVO: ${GESTAO_COBLI_WEBHOOK_ATIVO}
+      COBLI_WEBHOOK_SECRET: ${GESTAO_COBLI_WEBHOOK_SECRET}
+      TRACKING_JOB_TOKEN: ${GESTAO_TRACKING_JOB_TOKEN}
+      COBLI_SYNC_TOKEN: ${GESTAO_COBLI_SYNC_TOKEN}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - edge
+      - apps
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.gestao.rule=Host(`crea.lglabs.tech`)
+      - traefik.http.routers.gestao.entrypoints=websecure
+      - traefik.http.routers.gestao.tls.options=cf-aop-optional@file
+      - traefik.http.services.gestao.loadbalancer.server.port=8002
+
+networks:
+  edge:
+    external: true
+  apps:
+    external: true
