@@ -34,6 +34,13 @@ services:
     networks:
       - default
       - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.komodo.rule=Host(`komodo.lgmateus.com`)
+      - traefik.http.routers.komodo.entrypoints=websecure
+      - traefik.http.routers.komodo.tls.options=cf-aop@file
+      - traefik.http.services.komodo.loadbalancer.server.port=9120
 
   periphery:
     image: ghcr.io/moghtech/komodo-periphery:${COMPOSE_KOMODO_IMAGE_TAG:-2}
