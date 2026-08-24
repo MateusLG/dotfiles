@@ -119,12 +119,11 @@ done > "$INV/crontabs.txt"
 
 # repos: onde o codigo vive, para reclonar no destino. As 5 apps nao tem mais
 # clone de trabalho na VPS (o Komodo builda direto do GitHub); o que sobra
-# clonado aqui e o dotfiles e os repos de trabalho em ~/dev e ~/codex.
+# clonado aqui e o dotfiles e os repos de trabalho em ~/dev.
 {
   for d in /home/mateus/infra/dotfiles \
            /home/mateus/dev/*/*/ \
-           /home/mateus/dev/*/*/sistemas/*/*/ \
-           /home/mateus/codex/*/; do
+           /home/mateus/dev/*/*/sistemas/*/*/; do
     d=${d%/}
     [ -d "$d/.git" ] || continue
     printf '%s\n  remote: %s\n  branch: %s\n  head:   %s\n' "$d" \
