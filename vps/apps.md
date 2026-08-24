@@ -28,12 +28,16 @@ entra nas redes Docker que precisa:
 - **`apps`**: só turmasunb, album-copa e gestao, que falam com o Postgres do host via
   `host.docker.internal` (extra_hosts com `host-gateway`).
 
-Os diretórios `/srv/<app>` e os users de sistema (`lgmateus`, `turmasunb`, `albumcopa`,
-`gestao`) do mundo pré-container **continuam no disco**, por precaução — é o último
-rollback possível caso algo dê errado com os containers. `/srv/gestao` é a exceção: além
-de rollback, ele é **usado ativamente hoje** pelos jobs de rastreamento/conformidade (ver
-seção própria abaixo). Os outros três (`/srv/lgmateus`, `/srv/turmasunb`,
-`/srv/albumcopa`) e `/srv/ericsongomes` não são mais tocados por nada em produção.
+Os diretórios `/srv/<app>` e os users de sistema (`lgmateus`, `turmasunb`, `albumcopa`)
+do mundo pré-container **continuam no disco**, por precaução — é o último rollback possível
+caso algo dê errado com os containers. Nada em produção os toca. `/srv/gestao` **foi
+removido** em 2026-08-24, depois que os jobs dele deixaram de depender daquele virtualenv
+(ver seção própria abaixo).
+
+Nenhuma app publica porta no host. Os containers são alcançados só pelo Traefik, pela rede
+`edge`. As portas em `127.0.0.1` que existiram durante a transição — para o nginx continuar
+apontando para o mesmo endereço enquanto as apps viravam container — foram removidas em
+2026-08-24.
 
 ## Fluxo de uma requisição
 
@@ -87,14 +91,20 @@ Stack.
 
 ## Jobs do gestao (rastreamento e conformidade)
 
-Duas tarefas **continuam em systemd no host**, fora do Komodo:
-`gestao-rastreamento.timer` (a cada minuto) e `gestao-conformidade.timer` (de hora em
-hora). Ambas rodam `rastreabilidade-job.py` usando o virtualenv em
-`/srv/gestao/repo/gestao/backend/.venv` e falam por HTTP com o container do gestao
-(`127.0.0.1:8002`) — não dependem da unit `gestao.service` (removida) nem entram no
-`Requires=` de nada. É por causa dessas duas units que **`/srv/gestao` não pode ser
-apagado** ainda: migrar os dois jobs para **Procedures agendadas no Komodo** é o que
-liberaria remover o diretório de vez.
+Duas tarefas agendadas rodam como **sidecar da própria stack**: o serviço `jobs`, no
+`vps/stacks/gestao/compose.yaml`, usa a **mesma imagem da app** e executa
+`gestao/backend/scripts/agendador.py`. O agendador dispara `rastreamento` a cada minuto e
+`conformidade` no minuto 0 de cada hora, chamando `http://gestao:8002` pela rede interna do
+compose. Uma falha isolada é logada e não derruba o laço; todo log vai para stdout, então
+aparece em `docker logs` e no Komodo.
+
+Até 2026-08-24 isso eram dois timers do systemd (`gestao-rastreamento`,
+`gestao-conformidade`) rodando um script solto em `/srv/gestao/bin` com o virtualenv do
+host. Foram removidos, e com eles a última dependência de `/srv/gestao`.
+
+O script e o agendador são **versionados no repo da app**, não aqui — então a contratante,
+que vai rodar o sistema em outro servidor, recebe o agendamento junto com o
+`compose.example.yaml`, sem precisar instalar cron nenhum.
 
 ## TLS / Cloudflare
 
