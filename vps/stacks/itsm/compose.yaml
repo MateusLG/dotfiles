@@ -23,7 +23,12 @@ services:
       ## Escape hatch se o banco estiver sem usuários (picker vazio).
       ADMIN_LOGIN_EMAIL: ${ITSM_ADMIN_LOGIN_EMAIL}
       ADMIN_PASSWORD_HASH: ${ITSM_ADMIN_PASSWORD_HASH}
+      ## Anexos em disco — fora do Replit não existe o sidecar do Object
+      ## Storage; com ANEXOS_DIR o app grava no volume abaixo.
+      ANEXOS_DIR: /dados/anexos
       LOG_LEVEL: info
+    volumes:
+      - anexos:/dados/anexos
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -39,3 +44,6 @@ services:
 networks:
   edge:
     external: true
+
+volumes:
+  anexos:
