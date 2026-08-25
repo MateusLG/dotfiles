@@ -1,0 +1,41 @@
+services:
+  itsm:
+    image: itsm:latest
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+      ## Cache do otimizador de imagens do Next (única escrita em runtime).
+      - /app/.next/cache
+    environment:
+      ## HOMOL=true desativa o login Google e liga o picker de usuários sem
+      ## senha na tela de login (dados de dev). Nunca usar em produção real.
+      HOMOL: "true"
+      DATABASE_URL: ${ITSM_DATABASE_URL}
+      NEXTAUTH_SECRET: ${ITSM_NEXTAUTH_SECRET}
+      NEXTAUTH_URL: https://itsm.lglabs.tech
+      APP_URL: https://itsm.lglabs.tech
+      AUTH_TRUST_HOST: "true"
+      ## Escape hatch se o banco estiver sem usuários (picker vazio).
+      ADMIN_LOGIN_EMAIL: ${ITSM_ADMIN_LOGIN_EMAIL}
+      ADMIN_PASSWORD_HASH: ${ITSM_ADMIN_PASSWORD_HASH}
+      LOG_LEVEL: info
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.itsm.rule=Host(`itsm.lglabs.tech`)
+      - traefik.http.routers.itsm.entrypoints=websecure
+      - traefik.http.routers.itsm.tls.options=cf-aop@file
+      - traefik.http.services.itsm.loadbalancer.server.port=5000
+
+networks:
+  edge:
+    external: true
