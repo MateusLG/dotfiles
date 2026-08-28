@@ -41,6 +41,18 @@ Duas coisas que o Replit fornecia e aqui não existem, resolvidas no código da 
 Banco: `embratur_novo` no Postgres do host (schema `payload`), restaurado do Neon de
 produção do Replit. **Não confundir com o banco `embratur`, que é do patrocínio.**
 
+Dois detalhes de operação desta stack:
+
+- **Token do GitHub Packages**: o `pnpm install` do build baixa `@gtd-embratur/tokens` de
+  um registry privado. O Dockerfile lê o token como **secret do BuildKit** (não build-arg,
+  que ficaria no histórico da imagem), então as Builds passam
+  `--secret=id=gh_token,src=/etc/komodo/secrets/embratur-gh-packages-token` em `extra_args`.
+  Esse arquivo é uma **cópia** do Variable `GITHUB_PACKAGES_TOKEN` do Komodo: ao rotacionar
+  o token, atualizar os dois.
+- **E-mail desligado**: a stack sobe sem `SMTP_*`, então o Payload usa o adapter de console
+  e nada sai da máquina. Ligar exige decidir o destino do formulário da Central de Suporte
+  — o default do código (`SUPPORT_INBOX_EMAIL`) é `presidencia@embratur.com.br`, caixa real.
+
 Cada app é uma **Stack** do Komodo: compose versionado em `stacks/<app>/compose.yaml`,
 imagem construída por uma **Build** do Komodo a partir do repo da própria app (não deste
 repo de dotfiles) e publicada como `<app>:latest` (mais uma tag com o hash do commit).
@@ -97,7 +109,9 @@ RunBuild (rebuilda a imagem <app>:latest do commit novo)
 ```
 
 Repos com webhook configurado: `lgmateus`, `turmasunb`, `album-copa`, `site-ericson` (do
-`MateusLG`) e `OS48-CREA` (da org `KodiumAI`, para o gestao).
+`MateusLG`), `OS48-CREA` (da org `KodiumAI`, para o gestao) e `Embratur-Novo` (da org
+`gtd-embratur`). O do `embratur` builda **duas** imagens antes do DeployStack, porque a
+app tem dois runtimes distintos (Node e nginx).
 
 Este repo (**`dotfiles`**) **não tem webhook** — um push aqui pode afetar várias Stacks
 ao mesmo tempo (compose, config do Traefik, etc.) e não há mapeamento automático de
