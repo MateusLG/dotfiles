@@ -1,0 +1,119 @@
+## Site novo da Embratur (migrado do Replit). Três serviços atrás de UM domínio,
+## roteados por path pelo Traefik — o mesmo arranjo que o router do Replit fazia:
+##   /        -> site (SPA estática, nginx)
+##   /api/*   -> api  (Express; proxy read-only para o Payload e endpoints de form)
+##   /admin/* -> cms  (Next 15 + Payload 3)
+## `api` e `cms` saem da mesma imagem (monorepo pnpm), mudando só o command.
+
+services:
+  site:
+    image: embratur-site:latest
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    networks:
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.embratur-site.rule=Host(`embratur.lglabs.tech`)
+      - traefik.http.routers.embratur-site.entrypoints=websecure
+      - traefik.http.routers.embratur-site.tls.options=cf-aop@file
+      - traefik.http.routers.embratur-site.priority=1
+      - traefik.http.services.embratur-site.loadbalancer.server.port=8080
+
+  api:
+    image: embratur:latest
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      PORT: "8080"
+      ## Fora do Replit o CMS é outro container, não loopback.
+      CMS_BASE_URL: http://cms:22327
+      SITE_PUBLIC_URL: https://embratur.lglabs.tech
+      CORS_ALLOWED_ORIGINS: https://embratur.lglabs.tech
+      INTERNAL_ALERT_TOKEN: ${EMBRATUR_INTERNAL_ALERT_TOKEN}
+      TURNSTILE_SECRET: ${EMBRATUR_TURNSTILE_SECRET}
+      SUPPORT_INBOX_EMAIL: ${EMBRATUR_SUPPORT_INBOX_EMAIL}
+      LOG_LEVEL: info
+    networks:
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.embratur-api.rule=Host(`embratur.lglabs.tech`) && PathPrefix(`/api`)
+      - traefik.http.routers.embratur-api.entrypoints=websecure
+      - traefik.http.routers.embratur-api.tls.options=cf-aop@file
+      - traefik.http.routers.embratur-api.priority=10
+      - traefik.http.services.embratur-api.loadbalancer.server.port=8080
+
+  cms:
+    image: embratur:latest
+    command: ["cms-entrypoint"]
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+      ## Cache do otimizador de imagens do Next (única escrita fora do volume).
+      - /app/artifacts/embratur-cms/.next/cache
+    environment:
+      PORT: "22327"
+      BASE_PATH: /admin
+      DATABASE_URL: ${EMBRATUR_DATABASE_URL}
+      PAYLOAD_SECRET: ${EMBRATUR_PAYLOAD_SECRET}
+      ## Sem o sidecar de Object Storage do Replit, a mídia vai para o volume.
+      MEDIA_DIR: /data/media
+      PAYLOAD_PUBLIC_SERVER_URL: https://embratur.lglabs.tech/admin
+      SITE_PUBLIC_URL: https://embratur.lglabs.tech
+      PUBLIC_SITE_URL: https://embratur.lglabs.tech
+      API_SERVER_BASE_URL: http://api:8080/api
+      INTERNAL_ALERT_TOKEN: ${EMBRATUR_INTERNAL_ALERT_TOKEN}
+      SMTP_HOST: ${EMBRATUR_SMTP_HOST}
+      SMTP_PORT: ${EMBRATUR_SMTP_PORT}
+      SMTP_USER: ${EMBRATUR_SMTP_USER}
+      SMTP_PASS: ${EMBRATUR_SMTP_PASS}
+      EMAIL_FROM_ADDRESS: ${EMBRATUR_EMAIL_FROM_ADDRESS}
+      EMAIL_FROM_NAME: ${EMBRATUR_EMAIL_FROM_NAME}
+      SUPPORT_INBOX_EMAIL: ${EMBRATUR_SUPPORT_INBOX_EMAIL}
+      GOOGLE_CLIENT_ID: ${EMBRATUR_GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${EMBRATUR_GOOGLE_CLIENT_SECRET}
+      OAUTH_REDIRECT_BASE_URL: https://embratur.lglabs.tech/admin
+      ALLOWED_HD: ${EMBRATUR_ALLOWED_HD}
+    volumes:
+      - media:/data/media
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.embratur-cms.rule=Host(`embratur.lglabs.tech`) && PathPrefix(`/admin`)
+      - traefik.http.routers.embratur-cms.entrypoints=websecure
+      - traefik.http.routers.embratur-cms.tls.options=cf-aop@file
+      - traefik.http.routers.embratur-cms.priority=10
+      - traefik.http.services.embratur-cms.loadbalancer.server.port=22327
+
+networks:
+  edge:
+    external: true
+
+volumes:
+  media:

@@ -10,9 +10,36 @@ e do systemd+nginx pro Komodo+Traefik em containers em agosto/2026).
 | album-copa   | `albumcopa`     | 8001               | album.lgmateus.com                              |
 | os48 / CREA  | `gestao`        | 8002               | crea.lglabs.tech                                |
 | ericsongomes | `ericsongomes`  | 8080               | ericsongomes.com.br, www.ericsongomes.com.br    |
+| embratur     | `embratur`      | 8080 / 8080 / 22327 | embratur.lglabs.tech                            |
 
 A stack do `gestao` tem **dois** containers: a app e o sidecar `jobs`, que roda as tarefas
-agendadas (ver seção própria). As demais têm um só.
+agendadas (ver seção própria). A do `embratur` tem **três** — ver abaixo. As demais têm um só.
+
+## embratur (site novo, migrado do Replit)
+
+Um domínio, três containers, roteados **por path** pelo Traefik — o mesmo arranjo que o
+router do Replit fazia:
+
+```
+/        -> site  (nginx-unprivileged servindo a SPA buildada pelo Vite)
+/api/*   -> api   (Express: proxy read-only do Payload, formulários, /api/media)
+/admin/* -> cms   (Next 15 + Payload 3)
+```
+
+`api` e `cms` saem da **mesma** imagem (`embratur:latest`, monorepo pnpm), mudando só o
+`command`; o `site` é uma imagem própria (`embratur-site:latest`) porque o conteúdo
+estático inclui ~930 MB de PDFs que os dois serviços em Node não precisam carregar.
+
+Duas coisas que o Replit fornecia e aqui não existem, resolvidas no código da app:
+
+- **Object Storage**: a mídia do Payload ia para um bucket GCS autenticado por um sidecar
+  em `127.0.0.1:1106`. Agora vai para `MEDIA_DIR=/data/media`, no volume `media` (~9 GB,
+  17.259 arquivos). A URL pública (`/api/media/<arquivo>`) não mudou.
+- **Loopback entre serviços**: o api-server falava com o CMS em `127.0.0.1:22327`. Agora é
+  `CMS_BASE_URL=http://cms:22327`.
+
+Banco: `embratur_novo` no Postgres do host (schema `payload`), restaurado do Neon de
+produção do Replit. **Não confundir com o banco `embratur`, que é do patrocínio.**
 
 Cada app é uma **Stack** do Komodo: compose versionado em `stacks/<app>/compose.yaml`,
 imagem construída por uma **Build** do Komodo a partir do repo da própria app (não deste
