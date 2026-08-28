@@ -15,6 +15,10 @@ e do systemd+nginx pro Komodo+Traefik em containers em agosto/2026).
 A stack do `gestao` tem **dois** containers: a app e o sidecar `jobs`, que roda as tarefas
 agendadas (ver seção própria). A do `embratur` tem **três** — ver abaixo. As demais têm um só.
 
+Cada app é uma **Stack** do Komodo: compose versionado em `stacks/<app>/compose.yaml`,
+imagem construída por uma **Build** do Komodo a partir do repo da própria app (não deste
+repo de dotfiles) e publicada como `<app>:latest` (mais uma tag com o hash do commit).
+
 ## embratur (site novo, migrado do Replit)
 
 Um domínio, três containers, roteados **por path** pelo Traefik — o mesmo arranjo que o
@@ -52,10 +56,6 @@ Dois detalhes de operação desta stack:
 - **E-mail desligado**: a stack sobe sem `SMTP_*`, então o Payload usa o adapter de console
   e nada sai da máquina. Ligar exige decidir o destino do formulário da Central de Suporte
   — o default do código (`SUPPORT_INBOX_EMAIL`) é `presidencia@embratur.com.br`, caixa real.
-
-Cada app é uma **Stack** do Komodo: compose versionado em `stacks/<app>/compose.yaml`,
-imagem construída por uma **Build** do Komodo a partir do repo da própria app (não deste
-repo de dotfiles) e publicada como `<app>:latest` (mais uma tag com o hash do commit).
 
 ## Isolamento (container)
 
