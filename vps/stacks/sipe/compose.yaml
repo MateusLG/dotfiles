@@ -1,0 +1,69 @@
+## SiPE (novo-sipe) — homolog de DESENVOLVIMENTO na VPS, fora do cluster da
+## Embratur. Sobe com HOMOL=true: login Google desativado e picker de usuários
+## sem senha na tela de login (personas do scripts/seed-homolog.ts). Só dados
+## sintéticos aqui — dado real fica no on-premise (soberania/LGPD).
+##
+## Banco: `sipe` no Postgres do host (não confundir com `embratur_novo`, que é
+## do CMS do site, nem com `embratur`, que é do patrocínio).
+##
+## Bootstrap de banco novo (uma vez, após o primeiro deploy):
+##   docker exec sipe-sipe-1 ./node_modules/.bin/tsx prisma/seed.ts
+##   docker exec sipe-sipe-1 ./node_modules/.bin/tsx scripts/seed-homolog.ts
+## (o entrypoint aplica `prisma migrate deploy` sozinho a cada start)
+
+services:
+  sipe:
+    image: sipe:latest
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+      ## Cache do otimizador de imagens do Next (única escrita fora de /tmp).
+      - /app/.next/cache
+    environment:
+      NEXTAUTH_URL: https://sipe.lglabs.tech
+      NEXTAUTH_SECRET: ${SIPE_NEXTAUTH_SECRET}
+      AUTH_TRUST_HOST: "true"
+      DATABASE_URL: ${SIPE_DATABASE_URL}
+
+      ## Modo homologação (lib/homolog.ts). A guarda de boot aborta se esta
+      ## flag subir com NEXTAUTH_URL institucional.
+      HOMOL: "true"
+
+      ## Espelha a produção real: Hermes e módulos Relato/Indicadores OFF.
+      HERMES_INTEGRACAO_DESABILITADA: "1"
+      SKIP_HERMES_SECRETS_BOOT_CHECK: "1"
+      MODULO_RELATO_ACAO_DESABILITADO: "1"
+      MODULO_INDICADORES_DESABILITADO: "1"
+
+      ## Sem container de docs nesta VPS — esconde o item do menu.
+      DOCS_URL: ""
+
+      LOG_LEVEL: info
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.sipe.rule=Host(`sipe.lglabs.tech`)
+      - traefik.http.routers.sipe.entrypoints=websecure
+      - traefik.http.routers.sipe.tls.options=cf-aop@file
+      - traefik.http.services.sipe.loadbalancer.server.port=3000
+    healthcheck:
+      ## /api/health pinga o Postgres do host. start_period generoso porque o
+      ## primeiro start aplica `prisma migrate deploy` antes de servir.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+networks:
+  edge:
+    external: true

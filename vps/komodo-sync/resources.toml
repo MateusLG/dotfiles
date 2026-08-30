@@ -19,12 +19,84 @@ ALBUMCOPA_DATABASE_URL=[[ALBUMCOPA_DATABASE_URL]]
 ##
 
 [[stack]]
+name = "embratur"
+[stack.config]
+server = "srv1"
+auto_pull = false
+repo = "MateusLG/dotfiles"
+run_directory = "vps/stacks/embratur"
+environment = """
+EMBRATUR_DATABASE_URL=[[EMBRATUR_DATABASE_URL]]
+EMBRATUR_PAYLOAD_SECRET=[[EMBRATUR_PAYLOAD_SECRET]]
+EMBRATUR_INTERNAL_ALERT_TOKEN=[[EMBRATUR_INTERNAL_ALERT_TOKEN]]
+EMBRATUR_TURNSTILE_SECRET=[[EMBRATUR_TURNSTILE_SECRET]]
+EMBRATUR_GOOGLE_CLIENT_ID=[[EMBRATUR_GOOGLE_CLIENT_ID]]
+EMBRATUR_GOOGLE_CLIENT_SECRET=[[EMBRATUR_GOOGLE_CLIENT_SECRET]]
+EMBRATUR_ALLOWED_HD=[[EMBRATUR_ALLOWED_HD]]
+"""
+
+##
+
+[[stack]]
 name = "ericsongomes"
 [stack.config]
 server = "srv1"
 auto_pull = false
 repo = "MateusLG/dotfiles"
 run_directory = "vps/stacks/ericsongomes"
+
+##
+
+[[stack]]
+name = "gestao"
+[stack.config]
+server = "srv1"
+auto_pull = false
+repo = "MateusLG/dotfiles"
+run_directory = "vps/stacks/gestao"
+environment = """
+GESTAO_ENV=[[GESTAO_ENV]]
+GESTAO_DATABASE_URL=[[GESTAO_DATABASE_URL]]
+GESTAO_SSO_SHARED_SECRET=[[GESTAO_SSO_SHARED_SECRET]]
+GESTAO_SESSION_SECRET=[[GESTAO_SESSION_SECRET]]
+GESTAO_SSO_TOKEN_MAX_AGE_SECONDS=[[GESTAO_SSO_TOKEN_MAX_AGE_SECONDS]]
+GESTAO_SESSION_TTL_HOURS=[[GESTAO_SESSION_TTL_HOURS]]
+GESTAO_COOKIE_NAME=[[GESTAO_COOKIE_NAME]]
+GESTAO_COOKIE_DOMAIN=[[GESTAO_COOKIE_DOMAIN]]
+GESTAO_COOKIE_SECURE=[[GESTAO_COOKIE_SECURE]]
+GESTAO_POST_SSO_REDIRECT=[[GESTAO_POST_SSO_REDIRECT]]
+GESTAO_DEV_FRONTEND_ORIGIN=[[GESTAO_DEV_FRONTEND_ORIGIN]]
+GESTAO_TRACKING_UI_ATIVO=[[GESTAO_TRACKING_UI_ATIVO]]
+GESTAO_TRACKING_PERMISSIONS_BY_PROFILE=[[GESTAO_TRACKING_PERMISSIONS_BY_PROFILE]]
+GESTAO_TRACKING_ATIVO=[[GESTAO_TRACKING_ATIVO]]
+GESTAO_COBLI_ATIVO=[[GESTAO_COBLI_ATIVO]]
+GESTAO_COBLI_API_KEY=[[GESTAO_COBLI_API_KEY]]
+GESTAO_GOOGLE_MAPS_API_KEY=[[GESTAO_GOOGLE_MAPS_API_KEY]]
+GESTAO_COBLI_WEBHOOK_ATIVO=[[GESTAO_COBLI_WEBHOOK_ATIVO]]
+GESTAO_COBLI_WEBHOOK_SECRET=[[GESTAO_COBLI_WEBHOOK_SECRET]]
+GESTAO_TRACKING_JOB_TOKEN=[[GESTAO_TRACKING_JOB_TOKEN]]
+GESTAO_COBLI_SYNC_TOKEN=[[GESTAO_COBLI_SYNC_TOKEN]]
+GESTAO_RASTREAMENTO_TOKEN=[[GESTAO_RASTREAMENTO_TOKEN]]
+GESTAO_RASTREAMENTO_ATIVO=[[GESTAO_RASTREAMENTO_ATIVO]]
+GESTAO_CONFORMIDADE_TOKEN=[[GESTAO_CONFORMIDADE_TOKEN]]
+GESTAO_CONFORMIDADE_ATIVA=[[GESTAO_CONFORMIDADE_ATIVA]]
+"""
+
+##
+
+[[stack]]
+name = "itsm"
+[stack.config]
+server = "srv1"
+auto_pull = false
+repo = "MateusLG/dotfiles"
+run_directory = "vps/stacks/itsm"
+environment = """
+ITSM_DATABASE_URL=[[ITSM_DATABASE_URL]]
+ITSM_NEXTAUTH_SECRET=[[ITSM_NEXTAUTH_SECRET]]
+ITSM_ADMIN_LOGIN_EMAIL=[[ITSM_ADMIN_LOGIN_EMAIL]]
+ITSM_ADMIN_PASSWORD_HASH=[[ITSM_ADMIN_PASSWORD_HASH]]
+"""
 
 ##
 
@@ -48,6 +120,20 @@ run_directory = "vps/stacks/rustdesk"
 ##
 
 [[stack]]
+name = "sipe"
+[stack.config]
+server = "srv1"
+auto_pull = false
+repo = "MateusLG/dotfiles"
+run_directory = "vps/stacks/sipe"
+environment = """
+SIPE_DATABASE_URL=[[SIPE_DATABASE_URL]]
+SIPE_NEXTAUTH_SECRET=[[SIPE_NEXTAUTH_SECRET]]
+"""
+
+##
+
+[[stack]]
 name = "traefik"
 [stack.config]
 server = "srv1"
@@ -67,6 +153,9 @@ environment = """
 TURMASUNB_DATABASE_URL=[[TURMASUNB_DATABASE_URL]]
 TURMASUNB_SEMESTER=[[TURMASUNB_SEMESTER]]
 TURMASUNB_BACKUP_TOKEN=[[TURMASUNB_BACKUP_TOKEN]]
+TURMASUNB_BACKUP_PATH=[[TURMASUNB_BACKUP_PATH]]
+TURMASUNB_BACKUP_INTERVAL_HOURS=[[TURMASUNB_BACKUP_INTERVAL_HOURS]]
+TURMASUNB_BACKUP_MAX_FILES=[[TURMASUNB_BACKUP_MAX_FILES]]
 """
 
 ##
@@ -81,6 +170,34 @@ repo = "MateusLG/album-copa"
 ##
 
 [[build]]
+name = "embratur"
+[build.config]
+builder = "srv1"
+git_account = "MateusLG"
+repo = "gtd-embratur/Embratur-Novo"
+use_buildx = true
+extra_args = [
+  "--target=runtime",
+  "--secret=id=gh_token,src=/etc/komodo/secrets/embratur-gh-packages-token"
+]
+
+##
+
+[[build]]
+name = "embratur-site"
+[build.config]
+builder = "srv1"
+git_account = "MateusLG"
+repo = "gtd-embratur/Embratur-Novo"
+use_buildx = true
+extra_args = [
+  "--target=site",
+  "--secret=id=gh_token,src=/etc/komodo/secrets/embratur-gh-packages-token"
+]
+
+##
+
+[[build]]
 name = "ericsongomes"
 [build.config]
 builder = "srv1"
@@ -90,11 +207,46 @@ repo = "MateusLG/site-ericson"
 ##
 
 [[build]]
+name = "gestao"
+[build.config]
+builder = "srv1"
+git_account = "KodiumAI"
+repo = "KodiumAI/OS48-CREA"
+build_args = """
+VITE_GOOGLE_MAPS_API_KEY=[[GESTAO_VITE_GOOGLE_MAPS_API_KEY]]
+VITE_SGF_RMO_URL_TEMPLATE=[[GESTAO_VITE_SGF_RMO_URL_TEMPLATE]]
+"""
+
+##
+
+[[build]]
+name = "itsm"
+[build.config]
+builder = "srv1"
+git_account = "MateusLG"
+repo = "gtd-embratur/itsm-embratur"
+build_args = """
+GITHUB_PACKAGES_TOKEN=[[GITHUB_PACKAGES_TOKEN]]
+"""
+
+##
+
+[[build]]
 name = "lgmateus"
 [build.config]
 builder = "srv1"
 git_account = "MateusLG"
 repo = "MateusLG/lgmateus.com"
+
+##
+
+[[build]]
+name = "sipe"
+[build.config]
+builder = "srv1"
+git_account = "MateusLG"
+repo = "gtd-embratur/novo-sipe"
+branch = "feat/homolog-login"
 
 ##
 
@@ -151,8 +303,152 @@ executions = [
 
 ##
 
+[[procedure]]
+name = "deploy-albumcopa"
+
+[[procedure.config.stage]]
+name = "Build"
+enabled = true
+executions = [
+  { execution.type = "RunBuild", execution.params.build = "albumcopa", enabled = true }
+]
+
+[[procedure.config.stage]]
+name = "Deploy"
+enabled = true
+executions = [
+  { execution.type = "DeployStack", execution.params.stack = "albumcopa", execution.params.services = [], enabled = true }
+]
+
+##
+
+[[procedure]]
+name = "deploy-embratur"
+
+[[procedure.config.stage]]
+name = "Build"
+enabled = true
+executions = [
+  { execution.type = "RunBuild", execution.params.build = "embratur", enabled = true },
+  { execution.type = "RunBuild", execution.params.build = "embratur-site", enabled = true }
+]
+
+[[procedure.config.stage]]
+name = "Deploy"
+enabled = true
+executions = [
+  { execution.type = "DeployStack", execution.params.stack = "embratur", execution.params.services = [], enabled = true }
+]
+
+##
+
+[[procedure]]
+name = "deploy-ericsongomes"
+
+[[procedure.config.stage]]
+name = "Build"
+enabled = true
+executions = [
+  { execution.type = "RunBuild", execution.params.build = "ericsongomes", enabled = true }
+]
+
+[[procedure.config.stage]]
+name = "Deploy"
+enabled = true
+executions = [
+  { execution.type = "DeployStack", execution.params.stack = "ericsongomes", execution.params.services = [], enabled = true }
+]
+
+##
+
+[[procedure]]
+name = "deploy-gestao"
+
+[[procedure.config.stage]]
+name = "Build"
+enabled = true
+executions = [
+  { execution.type = "RunBuild", execution.params.build = "gestao", enabled = true }
+]
+
+[[procedure.config.stage]]
+name = "Deploy"
+enabled = true
+executions = [
+  { execution.type = "DeployStack", execution.params.stack = "gestao", execution.params.services = [], enabled = true }
+]
+
+##
+
+[[procedure]]
+name = "deploy-itsm"
+
+[[procedure.config.stage]]
+name = "Build"
+enabled = true
+executions = [
+  { execution.type = "RunBuild", execution.params.build = "itsm", enabled = true }
+]
+
+[[procedure.config.stage]]
+name = "Deploy"
+enabled = true
+executions = [
+  { execution.type = "DeployStack", execution.params.stack = "itsm", execution.params.services = [], enabled = true }
+]
+
+##
+
+[[procedure]]
+name = "deploy-lgmateus"
+
+[[procedure.config.stage]]
+name = "Build"
+enabled = true
+executions = [
+  { execution.type = "RunBuild", execution.params.build = "lgmateus", enabled = true }
+]
+
+[[procedure.config.stage]]
+name = "Deploy"
+enabled = true
+executions = [
+  { execution.type = "DeployStack", execution.params.stack = "lgmateus", execution.params.services = [], enabled = true }
+]
+
+##
+
+[[procedure]]
+name = "deploy-turmasunb"
+
+[[procedure.config.stage]]
+name = "Build"
+enabled = true
+executions = [
+  { execution.type = "RunBuild", execution.params.build = "turmasunb", enabled = true }
+]
+
+[[procedure.config.stage]]
+name = "Deploy"
+enabled = true
+executions = [
+  { execution.type = "DeployStack", execution.params.stack = "turmasunb", execution.params.services = [], enabled = true }
+]
+
+##
+
 [[builder]]
 name = "srv1"
 [builder.config]
 type = "Server"
 params.servers = ["srv1"]
+
+##
+
+[[resource_sync]]
+name = "komodo-resources"
+[resource_sync.config]
+repo = "MateusLG/dotfiles"
+resource_path = [
+  "vps/komodo-sync/resources.toml"
+]

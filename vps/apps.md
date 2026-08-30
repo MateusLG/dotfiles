@@ -11,6 +11,7 @@ e do systemd+nginx pro Komodo+Traefik em containers em agosto/2026).
 | os48 / CREA  | `gestao`        | 8002               | crea.lglabs.tech                                |
 | ericsongomes | `ericsongomes`  | 8080               | ericsongomes.com.br, www.ericsongomes.com.br    |
 | embratur     | `embratur`      | 8080 / 8080 / 22327 | embratur.lglabs.tech                            |
+| sipe         | `sipe`          | 3000               | sipe.lglabs.tech                                |
 
 A stack do `gestao` tem **dois** containers: a app e o sidecar `jobs`, que roda as tarefas
 agendadas (ver seção própria). A do `embratur` tem **três** — ver abaixo. As demais têm um só.
@@ -18,6 +19,22 @@ agendadas (ver seção própria). A do `embratur` tem **três** — ver abaixo. 
 Cada app é uma **Stack** do Komodo: compose versionado em `stacks/<app>/compose.yaml`,
 imagem construída por uma **Build** do Komodo a partir do repo da própria app (não deste
 repo de dotfiles) e publicada como `<app>:latest` (mais uma tag com o hash do commit).
+
+## sipe (homolog de desenvolvimento do novo SiPE)
+
+Homolog **de desenvolvimento** do `gtd-embratur/novo-sipe` — valida em URL pública
+(mobile incluso) o que depois vai pro homol/prod oficial no cluster da Embratur. Sobe
+com `HOMOL=true`: login Google desativado (fail-closed) e picker de usuários sem senha
+na tela de login (personas do `scripts/seed-homolog.ts`, uma por papel). **Só dados
+sintéticos** — dado real fica no on-premise (soberania/LGPD).
+
+- Banco: `sipe` no Postgres do host. Não confundir com `embratur_novo` (CMS do site)
+  nem `embratur` (patrocínio).
+- Build a partir do repo da app (branch configurável — aponta pra branch em validação;
+  `main` quando não houver nenhuma).
+- Bootstrap de banco novo (uma vez): seed base + seed-homolog via `docker exec` — os
+  comandos estão comentados no `stacks/sipe/compose.yaml`.
+- Variables do Komodo: `SIPE_DATABASE_URL`, `SIPE_NEXTAUTH_SECRET`.
 
 ## embratur (site novo, migrado do Replit)
 
