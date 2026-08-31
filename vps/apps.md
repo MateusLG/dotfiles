@@ -78,9 +78,11 @@ Dois detalhes de operação desta stack:
 ## faturamento (sistema de faturamento da Kodium)
 
 Sistema interno de OS/pagamentos/repasses (`MateusLG/kodium-faturamento`): FastAPI +
-Jinja2/HTMX, dark, HTTP Basic na frente (Variables `FATURAMENTO_AUTH_*`). Cascata de
-repasses é congelada em snapshot na confirmação do pagamento — editar template depois
-não recalcula confirmados.
+Jinja2/HTMX, dark. Login por usuário (tabela `usuario`, senha scrypt, cookie de sessão
+assinado com o Variable `FATURAMENTO_SESSAO_SECRET`); a migração seeda a equipe (Michel,
+Nathan, Juan, Mateus, Marcus, Allyson) com a senha padrão do time. Cascata de repasses é
+congelada em snapshot na confirmação do pagamento — editar template depois não recalcula
+confirmados.
 
 - Banco: `faturamento` no Postgres do host; migrações via alembic no start do container.
 - Uploads (termos de aceite) no volume `uploads` da stack.

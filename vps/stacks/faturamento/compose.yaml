@@ -23,8 +23,7 @@ services:
       ## do dia seria em UTC (21h de Brasília viraria o dia seguinte).
       TZ: America/Sao_Paulo
       FAT_DATABASE_URL: ${FATURAMENTO_DATABASE_URL}
-      FAT_AUTH_USUARIO: ${FATURAMENTO_AUTH_USUARIO}
-      FAT_AUTH_SENHA: ${FATURAMENTO_AUTH_SENHA}
+      FAT_SESSAO_SECRET: ${FATURAMENTO_SESSAO_SECRET}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
