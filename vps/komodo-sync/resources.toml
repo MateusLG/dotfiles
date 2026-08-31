@@ -48,6 +48,21 @@ run_directory = "vps/stacks/ericsongomes"
 ##
 
 [[stack]]
+name = "faturamento"
+[stack.config]
+server = "srv1"
+auto_pull = false
+repo = "MateusLG/dotfiles"
+run_directory = "vps/stacks/faturamento"
+environment = """
+FATURAMENTO_DATABASE_URL=[[FATURAMENTO_DATABASE_URL]]
+FATURAMENTO_AUTH_USUARIO=[[FATURAMENTO_AUTH_USUARIO]]
+FATURAMENTO_AUTH_SENHA=[[FATURAMENTO_AUTH_SENHA]]
+"""
+
+##
+
+[[stack]]
 name = "gestao"
 [stack.config]
 server = "srv1"
@@ -207,6 +222,15 @@ repo = "MateusLG/site-ericson"
 ##
 
 [[build]]
+name = "faturamento"
+[build.config]
+builder = "srv1"
+git_account = "MateusLG"
+repo = "MateusLG/kodium-faturamento"
+
+##
+
+[[build]]
 name = "gestao"
 [build.config]
 builder = "srv1"
@@ -357,6 +381,25 @@ name = "Deploy"
 enabled = true
 executions = [
   { execution.type = "DeployStack", execution.params.stack = "ericsongomes", execution.params.services = [], enabled = true }
+]
+
+##
+
+[[procedure]]
+name = "deploy-faturamento"
+
+[[procedure.config.stage]]
+name = "Build"
+enabled = true
+executions = [
+  { execution.type = "RunBuild", execution.params.build = "faturamento", enabled = true }
+]
+
+[[procedure.config.stage]]
+name = "Deploy"
+enabled = true
+executions = [
+  { execution.type = "DeployStack", execution.params.stack = "faturamento", execution.params.services = [], enabled = true }
 ]
 
 ##

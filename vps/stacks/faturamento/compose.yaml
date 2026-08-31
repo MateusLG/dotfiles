@@ -1,0 +1,54 @@
+## Sistema de faturamento interno da Kodium (OS, cascata de repasses com
+## snapshot na confirmação, dashboard). Repo: MateusLG/kodium-faturamento.
+##
+## Banco: `faturamento` no Postgres do host. As migrações (alembic upgrade
+## head) rodam no start do container — CMD da imagem.
+##
+## Uploads dos termos de aceite ficam no volume `uploads` (imagem pré-cria
+## /app/uploads com a ownership do UID 10001).
+
+services:
+  faturamento:
+    image: faturamento:latest
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      ## date.today() define data_confirmacao/data_prevista — sem TZ o corte
+      ## do dia seria em UTC (21h de Brasília viraria o dia seguinte).
+      TZ: America/Sao_Paulo
+      FAT_DATABASE_URL: ${FATURAMENTO_DATABASE_URL}
+      FAT_AUTH_USUARIO: ${FATURAMENTO_AUTH_USUARIO}
+      FAT_AUTH_SENHA: ${FATURAMENTO_AUTH_SENHA}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - edge
+    volumes:
+      - uploads:/app/uploads
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.faturamento.rule=Host(`faturamento.lglabs.tech`)
+      - traefik.http.routers.faturamento.entrypoints=websecure
+      - traefik.http.routers.faturamento.tls.options=cf-aop@file
+      - traefik.http.services.faturamento.loadbalancer.server.port=8000
+    healthcheck:
+      ## Imagem python:slim não tem curl/wget; /saude é aberto por design.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/saude')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  uploads:
+
+networks:
+  edge:
+    external: true

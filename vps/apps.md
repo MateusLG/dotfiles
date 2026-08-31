@@ -12,6 +12,7 @@ e do systemd+nginx pro Komodo+Traefik em containers em agosto/2026).
 | ericsongomes | `ericsongomes`  | 8080               | ericsongomes.com.br, www.ericsongomes.com.br    |
 | embratur     | `embratur`      | 8080 / 8080 / 22327 | embratur.lglabs.tech                            |
 | sipe         | `sipe`          | 3000               | sipe.lglabs.tech                                |
+| faturamento  | `faturamento`   | 8000               | faturamento.lglabs.tech                         |
 
 A stack do `gestao` tem **dois** containers: a app e o sidecar `jobs`, que roda as tarefas
 agendadas (ver seção própria). A do `embratur` tem **três** — ver abaixo. As demais têm um só.
@@ -74,6 +75,17 @@ Dois detalhes de operação desta stack:
   e nada sai da máquina. Ligar exige decidir o destino do formulário da Central de Suporte
   — o default do código (`SUPPORT_INBOX_EMAIL`) é `presidencia@embratur.com.br`, caixa real.
 
+## faturamento (sistema de faturamento da Kodium)
+
+Sistema interno de OS/pagamentos/repasses (`MateusLG/kodium-faturamento`): FastAPI +
+Jinja2/HTMX, dark, HTTP Basic na frente (Variables `FATURAMENTO_AUTH_*`). Cascata de
+repasses é congelada em snapshot na confirmação do pagamento — editar template depois
+não recalcula confirmados.
+
+- Banco: `faturamento` no Postgres do host; migrações via alembic no start do container.
+- Uploads (termos de aceite) no volume `uploads` da stack.
+- `TZ=America/Sao_Paulo` no compose: `date.today()` define as datas de negócio.
+
 ## Isolamento (container)
 
 Cada app roda como container **não-root** (`node` no lgmateus; UID `10001` em
@@ -125,9 +137,9 @@ RunBuild (rebuilda a imagem <app>:latest do commit novo)
   → DeployStack (docker compose up -d com a imagem nova)
 ```
 
-Repos com webhook configurado: `lgmateus`, `turmasunb`, `album-copa`, `site-ericson` (do
-`MateusLG`), `OS48-CREA` (da org `KodiumAI`, para o gestao) e `Embratur-Novo` (da org
-`gtd-embratur`). O do `embratur` builda **duas** imagens antes do DeployStack, porque a
+Repos com webhook configurado: `lgmateus`, `turmasunb`, `album-copa`, `site-ericson` e
+`kodium-faturamento` (do `MateusLG`), `OS48-CREA` (da org `KodiumAI`, para o gestao) e
+`Embratur-Novo` (da org `gtd-embratur`). O do `embratur` builda **duas** imagens antes do DeployStack, porque a
 app tem dois runtimes distintos (Node e nginx).
 
 Este repo (**`dotfiles`**) **não tem webhook** — um push aqui pode afetar várias Stacks
@@ -204,6 +216,8 @@ que vai rodar o sistema em outro servidor, recebe o agendamento junto com o
   Auth é só header `X-Username` (sem senha).
 - **gestao**: db `crea_demo`, schema via alembic; contém dado de cliente em validação —
   ver `vps-os48-db-reset.md` na memória sobre reset/reseed.
+- **faturamento**: db/role `faturamento`, schema via alembic (roda no start do
+  container). Dado financeiro interno da Kodium.
 - Postgres escuta em `listen_addresses='*'` (`etc/postgresql/10-docker.conf`); o controle
   de acesso real é `pg_hba.conf` (scram, faixa `172.16.0.0/12` — todas as bridges do
   Docker) e `ufw` (5432 fechado pra internet, liberado só para essa faixa).
