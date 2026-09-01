@@ -77,7 +77,7 @@ Dois detalhes de operação desta stack:
 
 ## faturamento (sistema de faturamento da Kodium)
 
-Sistema interno de OS/pagamentos/repasses (`MateusLG/kodium-faturamento`): FastAPI +
+Sistema interno de OS/pagamentos/repasses (`KodiumAI/faturamento`): FastAPI +
 Jinja2/HTMX, dark. Login por usuário (tabela `usuario`, senha scrypt, cookie de sessão
 assinado com o Variable `FATURAMENTO_SESSAO_SECRET`); a migração seeda a equipe (Michel,
 Nathan, Juan, Mateus, Marcus, Allyson) com a senha padrão do time. Cascata de repasses é
@@ -139,10 +139,10 @@ RunBuild (rebuilda a imagem <app>:latest do commit novo)
   → DeployStack (docker compose up -d com a imagem nova)
 ```
 
-Repos com webhook configurado: `lgmateus`, `turmasunb`, `album-copa`, `site-ericson` e
-`kodium-faturamento` (do `MateusLG`), `OS48-CREA` (da org `KodiumAI`, para o gestao) e
-`Embratur-Novo` (da org `gtd-embratur`). O do `embratur` builda **duas** imagens antes do DeployStack, porque a
-app tem dois runtimes distintos (Node e nginx).
+Repos com webhook configurado: `lgmateus`, `turmasunb`, `album-copa`, `site-ericson`,
+`faturamento` e `OS48-CREA` (estes dois na org `KodiumAI`; o segundo alimenta `gestao`),
+além de `Embratur-Novo` (da org `gtd-embratur`). O do `embratur` builda **duas** imagens
+antes do DeployStack, porque a app tem dois runtimes distintos (Node e nginx).
 
 Este repo (**`dotfiles`**) **não tem webhook** — um push aqui pode afetar várias Stacks
 ao mesmo tempo (compose, config do Traefik, etc.) e não há mapeamento automático de

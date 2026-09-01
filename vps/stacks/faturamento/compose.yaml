@@ -1,5 +1,5 @@
 ## Sistema de faturamento interno da Kodium (OS, cascata de repasses com
-## snapshot na confirmação, dashboard). Repo: MateusLG/kodium-faturamento.
+## snapshot na confirmação, dashboard). Repo: KodiumAI/faturamento.
 ##
 ## Banco: `faturamento` no Postgres do host. As migrações (alembic upgrade
 ## head) rodam no start do container — CMD da imagem.
