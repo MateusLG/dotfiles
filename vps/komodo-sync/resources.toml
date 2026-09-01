@@ -224,8 +224,8 @@ repo = "MateusLG/site-ericson"
 name = "faturamento"
 [build.config]
 builder = "srv1"
-git_account = "MateusLG"
-repo = "MateusLG/kodium-faturamento"
+git_account = "KodiumAI"
+repo = "KodiumAI/faturamento"
 
 ##
 
