@@ -35,9 +35,7 @@ services:
       - traefik.docker.network=edge
       - traefik.http.routers.faturamento.rule=Host(`faturamento.kodium.ai`)
       - traefik.http.routers.faturamento.entrypoints=websecure
-      ## AOP da zona kodium.ai ainda nao confirmado: nasce permissivo, endurecer
-      ## para cf-aop@file depois de ligar Authenticated Origin Pulls no dashboard.
-      - traefik.http.routers.faturamento.tls.options=cf-aop-optional@file
+      - traefik.http.routers.faturamento.tls.options=cf-aop@file
       - traefik.http.services.faturamento.loadbalancer.server.port=8000
     healthcheck:
       ## Imagem python:slim não tem curl/wget; /saude é aberto por design.
