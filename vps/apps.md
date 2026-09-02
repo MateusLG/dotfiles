@@ -12,7 +12,7 @@ e do systemd+nginx pro Komodo+Traefik em containers em agosto/2026).
 | ericsongomes | `ericsongomes`  | 8080               | ericsongomes.com.br, www.ericsongomes.com.br    |
 | embratur     | `embratur`      | 8080 / 8080 / 22327 | embratur.lglabs.tech                            |
 | sipe         | `sipe`          | 3000               | sipe.lglabs.tech                                |
-| faturamento  | `faturamento`   | 8000               | faturamento.lglabs.tech                         |
+| faturamento  | `faturamento`   | 8000               | faturamento.kodium.ai                         |
 
 A stack do `gestao` tem **dois** containers: a app e o sidecar `jobs`, que roda as tarefas
 agendadas (ver seção própria). A do `embratur` tem **três** — ver abaixo. As demais têm um só.

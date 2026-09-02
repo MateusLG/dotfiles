@@ -7,9 +7,8 @@ tls:
         caFiles:
           - /certs/authenticated_origin_pull_ca.pem
         clientAuthType: RequireAndVerifyClientCert
-    ## Nao usada por nenhum router: o AOP da zona lglabs.tech foi ligado em 2026-08-23
-    ## e o crea passou a exigir o cert de cliente, igual aos demais. Mantida para o caso
-    ## de precisar afrouxar temporariamente algum dominio novo.
+    ## Usada so pelo faturamento (faturamento.kodium.ai) ate ligar AOP na zona kodium.ai.
+    ## O AOP da zona lglabs.tech foi ligado em 2026-08-23; os demais routers usam cf-aop.
     cf-aop-optional:
       minVersion: VersionTLS12
       clientAuth:
@@ -25,3 +24,5 @@ tls:
       keyFile: /certs/lglabs.tech.key
     - certFile: /certs/ericsongomes.crt
       keyFile: /certs/ericsongomes.key
+    - certFile: /certs/kodium.ai.crt
+      keyFile: /certs/kodium.ai.key
