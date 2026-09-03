@@ -95,8 +95,11 @@ de cada app em [`apps.md`](apps.md).
   é o modelo versionado, sem valores reais.
 - **Segredos das apps** (`DATABASE_URL`, tokens, etc.): não ficam em arquivo nenhum —
   são **Variables** do Komodo (Settings → Variables na UI, ou `CreateVariable`/
-  `UpdateVariableValue` na API), referenciadas no `environment:`/`build_args:` de cada
-  `stacks/<app>/compose.yaml` com `[[NOME_DA_VARIABLE]]`. Ver contagem por app em
+  `UpdateVariableValue` na API), referenciadas no `environment:` de cada
+  `stacks/<app>/compose.yaml` ou em `secret_args` da Build com
+  `[[NOME_DA_VARIABLE]]`. Segredos necessários durante o build devem usar
+  `secret_args`, nunca `build_args`, para não aparecerem no histórico ou nos logs da
+  imagem. Ver contagem por app em
   [`apps.md`](apps.md).
 - **API do Komodo**: chave em `/etc/komodo/komodo/api.env` no host (`chmod 600`, fora do
   git), headers `X-Api-Key`/`X-Api-Secret` contra `http://127.0.0.1:9120/read` (leitura)

@@ -250,7 +250,9 @@ próprio Komodo não gerencia). Por app nova:
 2. Registrar o **Repo** no Komodo (provider `github.com`, conta com PAT fine-grained
    `Contents: Read-only`) e criar a **Build** apontando pra ele.
 3. Criar as **Variables** que a app precisa (Komodo → Variables), com o nome que o
-   `environment:`/`build_args:` do compose referencia.
+   `environment:` da Stack ou o `secret_args` da Build referencia. Reservar
+   `build_args` somente para valores públicos que podem aparecer em logs e camadas da
+   imagem.
 4. Criar o diretório `stacks/<app>/compose.yaml` neste repo: rede `edge` (+ `apps` se
    precisar de Postgres), labels do Traefik (`traefik.enable`, `Host()`,
    `tls.options=cf-aop@file`, porta do `loadbalancer.server.port`), `cap_drop: ALL`,

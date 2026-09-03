@@ -248,7 +248,7 @@ name = "itsm"
 builder = "srv1"
 git_account = "MateusLG"
 repo = "gtd-embratur/itsm-embratur"
-build_args = """
+secret_args = """
 GITHUB_PACKAGES_TOKEN=[[GITHUB_PACKAGES_TOKEN]]
 """
 
