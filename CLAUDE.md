@@ -16,6 +16,7 @@
 - `hypr/` — Hyprland (`bindings.conf`, `input.conf`, `monitors.conf`, `hypridle.conf`)
 - `waybar/` — Waybar (`config.jsonc`, `style.css`)
 - `claude/` — Claude Code (`settings.json`, `CLAUDE.md` template, `skills/`)
+- `codex/` — Codex CLI (`config.toml`)
 - `omarchy/themes/` — temas customizados do Omarchy (ex: `lg-umbra`)
 - `system/logind.conf.d/` — overrides do `systemd-logind` (ex: tampa fechada com monitor externo)
 
