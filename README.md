@@ -13,6 +13,7 @@ Configurações pessoais do meu setup (Omarchy / Hyprland em Arch Linux).
 - [`zsh/`](zsh/) — Zsh + Powerlevel10k (substitui o bash+starship padrão do Omarchy)
 - [`wsl/`](wsl/) — variante do Zsh adaptada pra WSL2 + Arch (sem Omarchy/Hyprland)
 - [`claude/`](claude/) — configurações do Claude Code (`settings.json`, skills, `CLAUDE.md`)
+- [`codex/`](codex/) — configurações do Codex CLI (`config.toml`, superpowers)
 - [`omarchy/`](omarchy/) — customizações do Omarchy (temas)
 - [`scripts/`](scripts/) — scripts utilitários (ex: `work.sh`)
 - [`system/`](system/) — configs do sistema (ex: `logind.conf.d/`)

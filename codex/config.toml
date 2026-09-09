@@ -1,0 +1,33 @@
+# Config global do Codex CLI. Vai em ~/.codex/config.toml.
+# Blocos da máquina ([projects.*], [marketplaces.*]) ficam só no arquivo local — ver README.md.
+
+model = "gpt-6-astra"
+model_reasoning_effort = "medium"
+service_tier = "priority"
+personality = "pragmatic"
+approval_policy = "never"
+approvals_reviewer = "user"
+sandbox_mode = "danger-full-access"
+# padrão é "vscode": citações viram link vscode://
+file_opener = "none"
+# padrão "cached" só consulta índice; "live" busca na web de fato
+web_search = "live"
+
+[features]
+memories = true
+multi_agent = true
+
+# backstop pros spawns do superpowers: sem isso o subagente herda o modelo da sessão
+[agents]
+default_subagent_model = "gpt-5.6-sol"
+default_subagent_reasoning_effort = "medium"
+
+[tui]
+notifications = true
+resume_cwd = "session"
+
+[plugins."visualize@openai-bundled"]
+enabled = true
+
+[plugins."sites@openai-bundled"]
+enabled = true
