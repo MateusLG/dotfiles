@@ -13,6 +13,19 @@ Uso: merge-codex-config.py <repo_config> <local_config> <saida>
 """
 import sys
 
+# Marcadores que este script escreve. Precisam ser removidos do arquivo local
+# antes do parse: senão, a cada execução eles são lidos como conteúdo e
+# reemitidos junto com os novos, duplicando a cada run.
+MARKERS = (
+    "# ── preservado do ~/.codex/config.toml desta máquina ──",
+    "# ── blocos desta máquina (escritos pelo Codex) ──",
+    "# Não versionar: paths absolutos. Ver codex/README.md.",
+)
+
+
+def strip_markers(text):
+    return "\n".join(l for l in text.splitlines() if l.strip() not in MARKERS)
+
 
 def parse(text):
     """Divide o TOML em (preambulo, [(header, corpo), ...]).
@@ -60,7 +73,7 @@ def main():
     with open(repo_path, encoding="utf-8") as fh:
         repo_pre, repo_blocks = parse(fh.read())
     with open(local_path, encoding="utf-8") as fh:
-        local_pre, local_blocks = parse(fh.read())
+        local_pre, local_blocks = parse(strip_markers(fh.read()))
 
     repo_keys = keys(repo_pre)
     repo_headers = {h for h, _ in repo_blocks}
@@ -69,12 +82,12 @@ def main():
 
     # Chaves top-level que só o local tem (ex: notify, apontando pro app).
     kept_pre = [l for l in local_pre
-                if not (l.strip() and not l.strip().startswith("#")
-                        and "=" in l and l.split("=", 1)[0].strip() in repo_keys)]
-    if any(l.strip() for l in kept_pre):
+                if l.strip() and not l.strip().startswith("#") and "=" in l
+                and l.split("=", 1)[0].strip() not in repo_keys]
+    if kept_pre:
         out.append("")
         out.append("# ── preservado do ~/.codex/config.toml desta máquina ──")
-        out.extend(l for l in kept_pre if l.strip())
+        out.extend(kept_pre)
 
     for _, body in repo_blocks:
         out.extend(body)
@@ -87,7 +100,15 @@ def main():
         for _, body in machine:
             out.extend(body)
 
-    text = "\n".join(out).rstrip() + "\n"
+    # Colapsa linhas em branco consecutivas: tirar os marcadores deixa para
+    # trás a linha vazia que os precedia, e ela se acumularia a cada execução.
+    collapsed = []
+    for line in out:
+        if not line.strip() and collapsed and not collapsed[-1].strip():
+            continue
+        collapsed.append(line)
+
+    text = "\n".join(collapsed).rstrip() + "\n"
     with open(out_path, "w", encoding="utf-8") as fh:
         fh.write(text)
 
