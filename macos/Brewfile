@@ -1,0 +1,22 @@
+# Dependências do setup no macOS. Uso: brew bundle --file=macos/Brewfile
+
+# Shell
+brew "zsh-completions"
+brew "zsh-autosuggestions"
+brew "zsh-syntax-highlighting"
+
+# Ferramentas usadas pelo zshrc
+brew "eza"
+brew "fzf"
+brew "zoxide"
+brew "bat"
+brew "fastfetch"
+brew "mise"
+brew "neovim"
+brew "tmux"
+brew "git"
+
+# Terminal + fontes
+cask "ghostty"
+cask "font-jetbrains-mono-nerd-font"
+cask "font-meslo-lg-nerd-font"
