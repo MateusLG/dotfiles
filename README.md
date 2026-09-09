@@ -12,6 +12,7 @@ Configurações pessoais do meu setup (Omarchy / Hyprland em Arch Linux).
 - [`nvim/`](nvim/) — customizações do Neovim sobre o LazyVim (keymaps)
 - [`zsh/`](zsh/) — Zsh + Powerlevel10k (substitui o bash+starship padrão do Omarchy)
 - [`wsl/`](wsl/) — variante do Zsh adaptada pra WSL2 + Arch (sem Omarchy/Hyprland)
+- [`agents/`](agents/) — skills compartilhadas entre Codex e Claude Code (ex: `produzir-sprites`)
 - [`claude/`](claude/) — configurações do Claude Code (`settings.json`, skills, `CLAUDE.md`)
 - [`codex/`](codex/) — configurações do Codex CLI (`config.toml`, superpowers)
 - [`omarchy/`](omarchy/) — customizações do Omarchy (temas)
