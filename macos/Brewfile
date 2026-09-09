@@ -16,8 +16,8 @@ brew "neovim"
 brew "tmux"
 brew "git"
 
-# Terminal
-cask "ghostty"
-
+# Terminal: o Terminal.app do macOS já vem instalado. O perfil com o tema
+# está em macos/terminal/ — ver README.
+#
 # As Nerd Fonts NÃO vêm por cask: install-nerdfonts.sh baixa direto pra
 # ~/Library/Fonts, sem depender do brew (que precisa de sudo pra instalar).

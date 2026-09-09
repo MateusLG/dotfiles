@@ -9,7 +9,7 @@ era específico de Linux/Windows.
 ## Arquivos
 
 - `zshrc` — vai em `~/.zshrc`.
-- `ghostty/config` + `ghostty/themes/lg-abissal` — vão em `~/.config/ghostty/`.
+- `terminal/` — perfil do Terminal.app com o tema, e o gerador dele.
 - `Brewfile` — dependências. `brew bundle --file=macos/Brewfile`.
 - `install.sh` — instalador idempotente (symlinks + backup do que existia).
 - `merge-codex-config.py` — merge do config do Codex (ver abaixo).
@@ -31,16 +31,28 @@ era específico de Linux/Windows.
 Mantidos iguais: history, completion, aliases `eza`/git/`..`, `zd` do zoxide,
 `n()`, `claude-sessions`, mise, p10k.
 
-## Ghostty
+## Terminal.app
 
-O `ghostty/config` do Omarchy fazia `config-file = ?"~/.config/omarchy/current/theme/ghostty.conf"`,
-que não existe fora do Omarchy. O tema [`lg-abissal`](../omarchy/themes/lg-abissal/)
-foi portado do `colors.toml` pro formato de tema do Ghostty.
+O macOS já traz o Terminal.app, então não instalamos terminal nenhum. O que
+ele precisa é da fonte certa — sem uma Nerd Font, o p10k vira um monte de
+caixinhas.
 
-Outras mudanças: `font-size` 9 → 14 (Retina), `background-opacity` 0.5 → 0.92 +
-`background-blur` (o 0.5 contava com o blur do Hyprland), removidos
-`gtk-toolbar-style` e `async-backend = epoll` (Linux-only), e os keybinds de
-`Insert` (tecla que não existe em teclado Mac — `cmd+c`/`cmd+v` já são padrão).
+`terminal/make-profile.py` gera um perfil `.terminal` a partir do
+`colors.toml` do tema — a paleta segue morando num lugar só, como já
+acontece com os terminais do Linux, e cada um deriva dela.
+
+```bash
+python3 macos/terminal/make-profile.py            # lg-abissal, MesloLGS NF 13pt
+python3 macos/terminal/make-profile.py lg-umbra   # outro tema
+```
+
+Para instalar: duplo clique no `.terminal` (ou `open`), e depois
+**Terminal > Configurações > Perfis > lg-abissal > Padrão**. Não dá pra
+symlinkar — o Terminal.app guarda os perfis nos próprios defaults, não em
+arquivo.
+
+O perfil já vem com `useOptionAsMetaKey`, senão os atalhos de shell com Meta
+não chegam no zsh.
 
 ## Codex
 

@@ -78,9 +78,14 @@ fi
 link "$REPO/macos/zshrc"   "$HOME/.zshrc"
 link "$REPO/zsh/p10k.zsh"  "$HOME/.p10k.zsh"
 
-# ─────────────────────────── Ghostty ─────────────────────────────
-link "$REPO/macos/ghostty/config" "$HOME/.config/ghostty/config"
-link "$REPO/macos/ghostty/themes" "$HOME/.config/ghostty/themes"
+# ────────────────────────── Terminal.app ─────────────────────────
+# Perfil não dá pra linkar: o Terminal.app guarda tudo nos próprios defaults.
+# Precisa ser importado uma vez (duplo clique) e marcado como padrão.
+TERM_PROFILE="$REPO/macos/terminal/lg-abissal.terminal"
+if [[ -f "$TERM_PROFILE" ]]; then
+  warn "perfil do Terminal.app: abra $TERM_PROFILE e marque como padrão"
+  warn "  (Terminal > Configurações > Perfis > lg-abissal > Padrão)"
+fi
 
 # ──────────────────────────── Claude ─────────────────────────────
 link "$REPO/claude/CLAUDE.md"     "$HOME/.claude/CLAUDE.md"
