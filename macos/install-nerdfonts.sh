@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Instala as Nerd Fonts em ~/Library/Fonts (não precisa de sudo). Idempotente.
-# Equivalente macOS do wsl/install-nerdfonts.ps1.
 #
 #  - MesloLGS NF: a fonte que o p10k recomenda, direto do repo do romkatv
 #    (mesmas 4 variantes que o script do Windows instala).
@@ -44,5 +43,4 @@ else
 fi
 
 info "pronto. Fontes em $DEST"
-info "Terminal.app: o perfil de macos/terminal/ já usa MesloLGS NF."
-info "Outro terminal: configurar 'MesloLGS NF' ou 'JetBrainsMono Nerd Font'."
+info "Configure 'MesloLGS NF' (ou 'JetBrainsMono Nerd Font') no terminal."

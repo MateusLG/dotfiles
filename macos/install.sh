@@ -76,16 +76,8 @@ fi
 
 # ──────────────────────────── Shell ──────────────────────────────
 link "$REPO/macos/zshrc"   "$HOME/.zshrc"
-link "$REPO/zsh/p10k.zsh"  "$HOME/.p10k.zsh"
+link "$REPO/macos/p10k.zsh" "$HOME/.p10k.zsh"
 
-# ────────────────────────── Terminal.app ─────────────────────────
-# Perfil não dá pra linkar: o Terminal.app guarda tudo nos próprios defaults.
-# Precisa ser importado uma vez (duplo clique) e marcado como padrão.
-TERM_PROFILE="$REPO/macos/terminal/lg-abissal.terminal"
-if [[ -f "$TERM_PROFILE" ]]; then
-  warn "perfil do Terminal.app: abra $TERM_PROFILE e marque como padrão"
-  warn "  (Terminal > Configurações > Perfis > lg-abissal > Padrão)"
-fi
 
 # ──────────────────────────── Claude ─────────────────────────────
 link "$REPO/claude/CLAUDE.md"     "$HOME/.claude/CLAUDE.md"
@@ -140,3 +132,6 @@ fi
 link "$REPO/nvim/lua/config/keymaps.lua" "$HOME/.config/nvim/lua/config/keymaps.lua"
 
 info "pronto. Abra um terminal novo (ou 'exec zsh')."
+warn "Terminal.app: configure a fonte 'MesloLGS NF' em"
+warn "  Terminal > Configurações > Perfis > Texto > Fonte."
+warn "  Sem Nerd Font, o prompt do p10k vira caixinhas."
