@@ -16,7 +16,8 @@ brew "neovim"
 brew "tmux"
 brew "git"
 
-# Terminal + fontes
+# Terminal
 cask "ghostty"
-cask "font-jetbrains-mono-nerd-font"
-cask "font-meslo-lg-nerd-font"
+
+# As Nerd Fonts NÃO vêm por cask: install-nerdfonts.sh baixa direto pra
+# ~/Library/Fonts, sem depender do brew (que precisa de sudo pra instalar).

@@ -51,6 +51,10 @@ else
   exit 1
 fi
 
+# ──────────────────────────── Fontes ─────────────────────────────
+info "instalando Nerd Fonts"
+bash "$REPO/macos/install-nerdfonts.sh"
+
 # ───────────────────────── Powerlevel10k ─────────────────────────
 P10K_DIR="$HOME/.config/zsh/powerlevel10k"
 if [[ -d "$P10K_DIR/.git" ]]; then
@@ -84,10 +88,19 @@ done
 # [projects.*]) com paths absolutos. Merge em vez de sobrescrever.
 CODEX_CFG="$HOME/.codex/config.toml"
 if [[ -f "$CODEX_CFG" ]]; then
-  cp "$CODEX_CFG" "$CODEX_CFG.bak-$STAMP"
-  info "merge do config do Codex (backup em $CODEX_CFG.bak-$STAMP)"
+  CODEX_TMP="$(mktemp)"
   python3 "$REPO/macos/merge-codex-config.py" \
-    "$REPO/codex/config.toml" "$CODEX_CFG.bak-$STAMP" "$CODEX_CFG"
+    "$REPO/codex/config.toml" "$CODEX_CFG" "$CODEX_TMP"
+  # Só toca no arquivo (e só faz backup) se o merge mudou alguma coisa —
+  # senão cada execução deixaria um .bak idêntico pra trás.
+  if cmp -s "$CODEX_TMP" "$CODEX_CFG"; then
+    info "config do Codex já em dia"
+    rm -f "$CODEX_TMP"
+  else
+    cp "$CODEX_CFG" "$CODEX_CFG.bak-$STAMP"
+    mv "$CODEX_TMP" "$CODEX_CFG"
+    info "merge do config do Codex (backup em $CODEX_CFG.bak-$STAMP)"
+  fi
 else
   mkdir -p "$HOME/.codex"
   cp "$REPO/codex/config.toml" "$CODEX_CFG"

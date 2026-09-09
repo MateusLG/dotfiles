@@ -13,6 +13,7 @@ era específico de Linux/Windows.
 - `Brewfile` — dependências. `brew bundle --file=macos/Brewfile`.
 - `install.sh` — instalador idempotente (symlinks + backup do que existia).
 - `merge-codex-config.py` — merge do config do Codex (ver abaixo).
+- `install-nerdfonts.sh` — Nerd Fonts em `~/Library/Fonts`, sem sudo. Equivalente macOS do [`wsl/install-nerdfonts.ps1`](../wsl/install-nerdfonts.ps1).
 
 ## Diferenças em relação ao `wsl/zshrc`
 
