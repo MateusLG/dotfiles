@@ -15,6 +15,7 @@
 
 - `hypr/` — Hyprland (`bindings.conf`, `input.conf`, `monitors.conf`, `hypridle.conf`)
 - `waybar/` — Waybar (`config.jsonc`, `style.css`)
+- `agents/` — skills compartilhadas Codex + Claude Code (`skills/<nome>/SKILL.md`)
 - `claude/` — Claude Code (`settings.json`, `CLAUDE.md` template, `skills/`)
 - `codex/` — Codex CLI (`config.toml`)
 - `omarchy/themes/` — temas customizados do Omarchy (ex: `lg-umbra`)
