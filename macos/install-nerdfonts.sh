@@ -4,7 +4,7 @@
 #
 #  - MesloLGS NF: a fonte que o p10k recomenda, direto do repo do romkatv
 #    (mesmas 4 variantes que o script do Windows instala).
-#  - JetBrainsMono Nerd Font: a que o macos/ghostty/config pede.
+#  - JetBrainsMono Nerd Font: alternativa, caso prefira a ela no terminal.
 set -euo pipefail
 
 DEST="$HOME/Library/Fonts"
@@ -44,5 +44,5 @@ else
 fi
 
 info "pronto. Fontes em $DEST"
-info "Ghostty: já aponta pra JetBrainsMono Nerd Font (macos/ghostty/config)."
-info "Outros terminais: configurar 'MesloLGS NF' ou 'JetBrainsMono Nerd Font'."
+info "Terminal.app: o perfil de macos/terminal/ já usa MesloLGS NF."
+info "Outro terminal: configurar 'MesloLGS NF' ou 'JetBrainsMono Nerd Font'."
