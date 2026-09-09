@@ -19,6 +19,23 @@ export EDITOR="nvim"
 export SUDO_EDITOR="$EDITOR"
 export BAT_THEME=ansi
 
+# ─────────────────── Rede com inspeção TLS ───────────────────────
+# Node, Python e afins trazem OpenSSL próprio e não consultam o keychain do
+# macOS, então quebram atrás de proxy que reassina TLS (FortiGate e cia).
+# Só entra em ação se os arquivos existirem — ver macos/README.md.
+#
+# NODE_EXTRA_CA_CERTS é aditivo: aponta só pro CA da inspeção.
+# SSL_CERT_FILE e REQUESTS_CA_BUNDLE SUBSTITUEM o bundle padrão, então
+# precisam do bundle completo — apontá-los só pro CA da inspeção quebraria
+# a validação de todo host que NÃO passa pelo proxy.
+_ca_dir="/usr/local/share/ca-certificates"
+[[ -r "$_ca_dir/fortinet-ca.pem" ]] && export NODE_EXTRA_CA_CERTS="$_ca_dir/fortinet-ca.pem"
+if [[ -r "$_ca_dir/ca-bundle.pem" ]]; then
+  export SSL_CERT_FILE="$_ca_dir/ca-bundle.pem"
+  export REQUESTS_CA_BUNDLE="$_ca_dir/ca-bundle.pem"
+fi
+unset _ca_dir
+
 # ──────────────────────────── História ───────────────────────────
 HISTFILE="$HOME/.zsh_history"
 HISTSIZE=32768
