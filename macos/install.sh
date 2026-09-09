@@ -41,6 +41,14 @@ fi
 if command -v brew &>/dev/null; then
   info "instalando pacotes (brew bundle)"
   brew bundle --file="$REPO/macos/Brewfile"
+  # O brew cria $HOMEBREW_PREFIX/share gravável pelo grupo. Como ele é
+  # ancestral dos diretórios de completion, o compinit condena a árvore
+  # inteira, aborta o autocomplete e ainda faz uma pergunta a cada shell
+  # novo. Volta a cada brew update, por isso fica aqui e não só no README.
+  if [[ -d "$HOMEBREW_PREFIX/share" ]]; then
+    chmod -R go-w "$HOMEBREW_PREFIX/share" 2>/dev/null || true
+    info "permissões de $HOMEBREW_PREFIX/share ajustadas (compinit)"
+  fi
 elif (( SKIP_BREW )); then
   warn "Homebrew ausente — pulando os pacotes (--skip-brew)."
   warn "Depois: instale o brew e rode 'brew bundle --file=$REPO/macos/Brewfile'"

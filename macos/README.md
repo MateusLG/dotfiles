@@ -50,6 +50,46 @@ paths absolutos — copiar o do repo por cima destrói isso. O
 `merge-codex-config.py` junta os dois: preferências do repo mandam, blocos da
 máquina são preservados. Roda dentro do `install.sh`, com backup antes.
 
+## Rede com inspeção TLS
+
+Em rede que reassina TLS (FortiGate e cia), o `curl` recusa a conexão com
+`unable to get local issuer certificate` e o Homebrew não instala — nem o
+`portable-ruby`, nem bottle nenhum. Para diagnosticar, veja quem emitiu o
+certificado:
+
+```bash
+echo | openssl s_client -connect formulae.brew.sh:443 -servername formulae.brew.sh 2>/dev/null \
+  | openssl x509 -noout -issuer
+```
+
+Se o issuer não for a CA real do site, a rede está interceptando. Pegue o CA
+raiz do proxy com o TI (ou exporte de outra máquina da rede que já o tenha) e:
+
+```bash
+# 1. confira que é CA raiz mesmo: subject == issuer e CA:TRUE
+openssl x509 -in ca.pem -noout -subject -issuer
+openssl x509 -in ca.pem -noout -text | grep -A1 "Basic Constraints"
+
+# 2. confie nele no sistema (resolve curl, git e o Homebrew)
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain ca.pem
+sudo cp ca.pem /usr/local/share/ca-certificates/fortinet-ca.pem
+
+# 3. bundle combinado para Node/Python, que não leem o keychain
+security find-certificate -a -p \
+  /System/Library/Keychains/SystemRootCertificates.keychain > /tmp/bundle.pem
+cat ca.pem >> /tmp/bundle.pem
+sudo cp /tmp/bundle.pem /usr/local/share/ca-certificates/ca-bundle.pem
+```
+
+O `zshrc` detecta esses dois arquivos e exporta `NODE_EXTRA_CA_CERTS`,
+`SSL_CERT_FILE` e `REQUESTS_CA_BUNDLE` sozinho. **O bundle precisa ser
+combinado** (CAs do sistema + o do proxy): `SSL_CERT_FILE` e
+`REQUESTS_CA_BUNDLE` substituem o bundle padrão em vez de somar, então
+apontá-los só pro CA do proxy quebra todo host que não passa por ele.
+
+Os certificados não são versionados aqui — são específicos da rede.
+
 ## O que NÃO se aplica ao macOS
 
 `hypr/`, `waybar/`, `omarchy/` (Wayland/Arch), `system/` (systemd), `wsl/`,
