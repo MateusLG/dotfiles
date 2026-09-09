@@ -8,7 +8,7 @@
 ## 1. Sobre o usuário
 
 - Desenvolvedor fullstack com foco em **backend**, brasileiro.
-- Setup: **Arch Linux + Hyprland + Omarchy**, tema `lg-umbra`. Editor principal: **Neovim**. Escreve **C** com gosto, usa **LaTeX** para documentos.
+- Setup: **macOS (Apple Silicon)**, Terminal.app + Zsh/Powerlevel10k. Editor principal: **Neovim**. Escreve **C** com gosto, usa **LaTeX** para documentos.
 - Stacks recorrentes: **Python (FastAPI, Typer, Pydantic v2)**, **TypeScript / Next.js**, **PostgreSQL**, deploy em **VPS própria** (Node atrás de proxy reverso, gerenciado por systemd/pm2 — migrou do Railway).
 - Terceiriza redação de texto longo para IA — gosta de respostas que ele possa colar/usar direto.
 
@@ -91,15 +91,24 @@ Referências: apple.com, samsung.com, claude.com, anthropic.com.
 - "Crio um README?" → **não**, salvo se o usuário pediu.
 - "Posso instalar essa lib nova?" → pergunta antes.
 
-## 11. Ambiente WSL2 (workstation Windows)
+## 11. Ambiente macOS
 
-Setup paralelo ao desktop principal: **Windows 11 + WSL2 + Arch Linux** (distro `archlinux`, user `mateuslira`). Usado na workstation EMBRATUR.
+Máquina atual: **MacBook (Apple Silicon)**, macOS 26. Substituiu o setup
+anterior de Arch Linux + Hyprland + Omarchy e a workstation Windows + WSL2 —
+ignorar referências a `pacman`, `yay`, Hyprland, Waybar, `/mnt/c`,
+`explorer.exe`, FortiClient ou Remmina.
 
-- **Sem ambiente gráfico Linux** dentro do WSL: nada de Hyprland, Wayland, Kitty, Alacritty, Waybar. Terminal acessado via Windows Terminal no host.
-- **FortiClient e Remmina** rodam no host Windows, não dentro do WSL. Ignorar referências a `/opt/forticlient` ou `scripts/work.sh` ao operar no WSL.
-- **Shell:** Zsh + Powerlevel10k usando `wsl/zshrc` do repo de dotfiles (não `zsh/zshrc`, que assume Omarchy/Hyprland). `~/.p10k.zsh` é symlink pra `~/dotfiles/zsh/p10k.zsh` (reaproveitado).
-- **Sudo** dentro do WSL pede senha → comandos com `sudo` devem ser rodados pelo usuário com prefixo `!`.
-- **Executar comandos no WSL a partir do Windows:** `wsl -d archlinux -- bash -lc '...'`.
-- **Editar arquivos dentro do WSL via ferramentas que escrevem em path Windows:** staging em `/mnt/c/...` + `tr -d '\r'` + `cp` pra normalizar CRLF→LF.
-- **Paths cross-OS:** Windows → WSL via `\\wsl$\archlinux\...` (UNC); WSL → Windows via `/mnt/c/...`.
-- **Abrir arquivos/URLs no host Windows a partir do WSL:** `explorer.exe <path>` (sempre disponível) ou `wslview` (se `wslu` instalado via AUR).
+- **Pacotes:** Homebrew em `/opt/homebrew`. Nada de `apt`/`pacman`.
+- **Shell:** Zsh + Powerlevel10k, config em `macos/zshrc` do repo de dotfiles
+  (`~/DEV/dotfiles`), symlinkado pra `~/.zshrc`.
+- **Sudo** pede senha → comandos com `sudo` devem ser rodados pelo usuário com
+  prefixo `!`.
+- **Ferramentas GNU vs BSD:** o macOS traz as BSD. `find` não tem `-printf`,
+  `sed -i` exige argumento, `stat` usa `-f` em vez de `-c`. Preferir solução
+  portável a assumir GNU.
+- **A rede de trabalho faz inspeção TLS (FortiGate).** O CA está confiado no
+  System keychain, e `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` /
+  `NODE_EXTRA_CA_CERTS` apontam pro bundle em
+  `/usr/local/share/ca-certificates/`. Se algo falhar com
+  `unable to get local issuer certificate`, é isso — ver `macos/README.md` no
+  repo de dotfiles.

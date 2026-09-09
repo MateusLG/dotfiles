@@ -1,21 +1,23 @@
 # macos
 
-Configuração adaptada pro **macOS (Apple Silicon)**. Terceira variante do zsh,
-ao lado de [`zsh/`](../zsh/) (Omarchy/Arch) e [`wsl/`](../wsl/) (WSL2/Arch).
+Configuração do **macOS (Apple Silicon)** — Zsh + Powerlevel10k, fontes,
+pacotes e o instalador.
 
-Partiu do `wsl/zshrc` — que já é a versão sem Omarchy/Hyprland — e trocou o que
-era específico de Linux/Windows.
+Veio da variante WSL2 do setup antigo (Arch), que já era a versão sem
+Omarchy/Hyprland, trocando o que era específico de Linux/Windows. A tabela
+abaixo registra o que mudou e por quê; as pastas do Linux não existem mais
+aqui, mas estão no histórico do git.
 
 ## Arquivos
 
 - `zshrc` — vai em `~/.zshrc`.
-- `terminal/` — perfil do Terminal.app com o tema, e o gerador dele.
+- `p10k.zsh` — vai em `~/.p10k.zsh`. Gerado pelo `p10k configure`.
 - `Brewfile` — dependências. `brew bundle --file=macos/Brewfile`.
 - `install.sh` — instalador idempotente (symlinks + backup do que existia).
+- `install-nerdfonts.sh` — Nerd Fonts em `~/Library/Fonts`, sem sudo.
 - `merge-codex-config.py` — merge do config do Codex (ver abaixo).
-- `install-nerdfonts.sh` — Nerd Fonts em `~/Library/Fonts`, sem sudo. Equivalente macOS do [`wsl/install-nerdfonts.ps1`](../wsl/install-nerdfonts.ps1).
 
-## Diferenças em relação ao `wsl/zshrc`
+## Diferenças em relação ao zshrc do WSL/Arch
 
 | | WSL/Arch | macOS |
 |---|---|---|
@@ -34,25 +36,15 @@ Mantidos iguais: history, completion, aliases `eza`/git/`..`, `zd` do zoxide,
 ## Terminal.app
 
 O macOS já traz o Terminal.app, então não instalamos terminal nenhum. O que
-ele precisa é da fonte certa — sem uma Nerd Font, o p10k vira um monte de
-caixinhas.
+ele precisa é da fonte: sem uma Nerd Font, o prompt do p10k vira um monte de
+caixinhas, porque ele desenha com glifos que não existem nas fontes comuns.
 
-`terminal/make-profile.py` gera um perfil `.terminal` a partir do
-`colors.toml` do tema — a paleta segue morando num lugar só, como já
-acontece com os terminais do Linux, e cada um deriva dela.
+**Terminal > Configurações > Perfis > Texto > Fonte** → `MesloLGS NF`
+(instalada pelo `install-nerdfonts.sh`). A `JetBrainsMono Nerd Font` também é
+instalada, se preferir.
 
-```bash
-python3 macos/terminal/make-profile.py            # lg-abissal, MesloLGS NF 13pt
-python3 macos/terminal/make-profile.py lg-umbra   # outro tema
-```
-
-Para instalar: duplo clique no `.terminal` (ou `open`), e depois
-**Terminal > Configurações > Perfis > lg-abissal > Padrão**. Não dá pra
-symlinkar — o Terminal.app guarda os perfis nos próprios defaults, não em
-arquivo.
-
-O perfil já vem com `useOptionAsMetaKey`, senão os atalhos de shell com Meta
-não chegam no zsh.
+Vale ligar **Usar Option como tecla Meta**, na aba Teclado do perfil — sem
+isso os atalhos de shell com Meta não chegam no zsh.
 
 ## Codex
 
@@ -102,12 +94,6 @@ apontá-los só pro CA do proxy quebra todo host que não passa por ele.
 
 Os certificados não são versionados aqui — são específicos da rede.
 
-## O que NÃO se aplica ao macOS
-
-`hypr/`, `waybar/`, `omarchy/` (Wayland/Arch), `system/` (systemd), `wsl/`,
-e `scripts/` (`work.sh` depende de FortiClient+Remmina; `lgfetch.sh` lê o tema
-atual do Omarchy).
-
 ## Instalação
 
 ```bash
@@ -118,8 +104,9 @@ atual do Omarchy).
 bash ~/DEV/dotfiles/macos/install.sh
 ```
 
-Depois, `p10k configure` se quiser regerar o `~/.p10k.zsh` (o instalador linka o
-do `zsh/`, gerado no Linux — funciona, mas foi feito pra outra fonte/terminal).
+Depois, `p10k configure` se quiser regerar o `~/.p10k.zsh` — o versionado aqui
+foi gerado no Linux, para outra fonte e outro terminal. Funciona, mas pode não
+ficar do jeito que você quer.
 
 O instalador move qualquer arquivo existente pra `<arquivo>.bak-<timestamp>`
 antes de criar o symlink.
