@@ -17,7 +17,7 @@ Usuário comum `mateus` no grupo `sudo`. Os arquivos espelham os caminhos reais 
   Komodo (Stacks, Builds, Server, Procedures) via Resource Sync, versionado para
   auditoria; não é aplicado automaticamente.
 - [`stacks/`](stacks/) — um diretório por Stack (`lgmateus`, `turmasunb`, `gestao`,
-  `ericsongomes`, `embratur`, `sipe`, `faturamento`, `itsm`, `traefik`), cada um com o `compose.yaml` que o
+  `ericsongomes`, `faturamento`, `traefik`), cada um com o `compose.yaml` que o
   Komodo faz pull e sobe.
 - [`bin/ufw-cloudflare.sh`](bin/ufw-cloudflare.sh) — restringe `80/443` às faixas de IP da Cloudflare.
 - [`bin/pg-backup.sh`](bin/pg-backup.sh) — dump diário dos bancos Postgres (`pg-backup.timer`).

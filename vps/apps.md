@@ -9,75 +9,22 @@ e do systemd+nginx pro Komodo+Traefik em containers em agosto/2026).
 | turmasunb    | `turmasunb`     | 8000               | turmasunb.com, www.turmasunb.com                |
 | os48 / CREA  | `gestao`        | 8002               | crea.lglabs.tech                                |
 | ericsongomes | `ericsongomes`  | 8080               | ericsongomes.com.br, www.ericsongomes.com.br    |
-| embratur     | `embratur`      | 8080 / 8080 / 22327 | embratur.lglabs.tech                            |
-| sipe         | `sipe`          | 3000               | sipe.lglabs.tech                                |
 | faturamento  | `faturamento`   | 8000               | faturamento.kodium.ai                         |
 
 Removidos em **2026-09-10**: `album-copa` (album.lgmateus.com; último dump em
-`~/backups/albumcopa/`) e a stack `rustdesk`. O ambiente de teste `patrocinio.lglabs.tech`
-(processos no host + rota solta no `dynamic/` do Traefik, nunca versionada) saiu no mesmo
-dia. Falta só o DNS dos três na Cloudflare.
+`~/backups/albumcopa/`), a stack `rustdesk`, o ambiente de teste `patrocinio.lglabs.tech`
+(processos no host + rota solta no `dynamic/` do Traefik, nunca versionada) e, a pedido,
+**tudo da GTD**: stacks `embratur`, `sipe` e `itsm` com builds, procedures, variables, bancos
+(`embratur_novo`, `sipe`, `itsm`), volumes (`embratur_media`, `itsm_anexos`), secrets em
+`/etc/komodo/secrets` e webhooks — sem backup, por decisão. `lgmateus` está **parada** (não
+apagada). Pendente só o DNS `album.lgmateus.com` (lglabs.tech é A wildcard).
 
 A stack do `gestao` tem **dois** containers: a app e o sidecar `jobs`, que roda as tarefas
-agendadas (ver seção própria). A do `embratur` tem **três** — ver abaixo. As demais têm um só.
+agendadas (ver seção própria). As demais têm um só.
 
 Cada app é uma **Stack** do Komodo: compose versionado em `stacks/<app>/compose.yaml`,
 imagem construída por uma **Build** do Komodo a partir do repo da própria app (não deste
 repo de dotfiles) e publicada como `<app>:latest` (mais uma tag com o hash do commit).
-
-## sipe (homolog de desenvolvimento do novo SiPE)
-
-Homolog **de desenvolvimento** do `gtd-embratur/novo-sipe` — valida em URL pública
-(mobile incluso) o que depois vai pro homol/prod oficial no cluster da Embratur. Sobe
-com `HOMOL=true`: login Google desativado (fail-closed) e picker de usuários sem senha
-na tela de login (personas do `scripts/seed-homolog.ts`, uma por papel). **Só dados
-sintéticos** — dado real fica no on-premise (soberania/LGPD).
-
-- Banco: `sipe` no Postgres do host. Não confundir com `embratur_novo` (CMS do site)
-  nem `embratur` (patrocínio).
-- Build a partir do repo da app (branch configurável — aponta pra branch em validação;
-  `main` quando não houver nenhuma).
-- Bootstrap de banco novo (uma vez): seed base + seed-homolog via `docker exec` — os
-  comandos estão comentados no `stacks/sipe/compose.yaml`.
-- Variables do Komodo: `SIPE_DATABASE_URL`, `SIPE_NEXTAUTH_SECRET`.
-
-## embratur (site novo, migrado do Replit)
-
-Um domínio, três containers, roteados **por path** pelo Traefik — o mesmo arranjo que o
-router do Replit fazia:
-
-```
-/        -> site  (nginx-unprivileged servindo a SPA buildada pelo Vite)
-/api/*   -> api   (Express: proxy read-only do Payload, formulários, /api/media)
-/admin/* -> cms   (Next 15 + Payload 3)
-```
-
-`api` e `cms` saem da **mesma** imagem (`embratur:latest`, monorepo pnpm), mudando só o
-`command`; o `site` é uma imagem própria (`embratur-site:latest`) porque o conteúdo
-estático inclui ~930 MB de PDFs que os dois serviços em Node não precisam carregar.
-
-Duas coisas que o Replit fornecia e aqui não existem, resolvidas no código da app:
-
-- **Object Storage**: a mídia do Payload ia para um bucket GCS autenticado por um sidecar
-  em `127.0.0.1:1106`. Agora vai para `MEDIA_DIR=/data/media`, no volume `media` (~9 GB,
-  17.259 arquivos). A URL pública (`/api/media/<arquivo>`) não mudou.
-- **Loopback entre serviços**: o api-server falava com o CMS em `127.0.0.1:22327`. Agora é
-  `CMS_BASE_URL=http://cms:22327`.
-
-Banco: `embratur_novo` no Postgres do host (schema `payload`), restaurado do Neon de
-produção do Replit. **Não confundir com o banco `embratur`, que é do patrocínio.**
-
-Dois detalhes de operação desta stack:
-
-- **Token do GitHub Packages**: o `pnpm install` do build baixa `@gtd-embratur/tokens` de
-  um registry privado. O Dockerfile lê o token como **secret do BuildKit** (não build-arg,
-  que ficaria no histórico da imagem), então as Builds passam
-  `--secret=id=gh_token,src=/etc/komodo/secrets/embratur-gh-packages-token` em `extra_args`.
-  Esse arquivo é uma **cópia** do Variable `GITHUB_PACKAGES_TOKEN` do Komodo: ao rotacionar
-  o token, atualizar os dois.
-- **E-mail desligado**: a stack sobe sem `SMTP_*`, então o Payload usa o adapter de console
-  e nada sai da máquina. Ligar exige decidir o destino do formulário da Central de Suporte
-  — o default do código (`SUPPORT_INBOX_EMAIL`) é `presidencia@embratur.com.br`, caixa real.
 
 ## faturamento (sistema de faturamento da Kodium)
 
@@ -144,9 +91,7 @@ RunBuild (rebuilda a imagem <app>:latest do commit novo)
 ```
 
 Repos com webhook configurado: `lgmateus`, `turmasunb`, `site-ericson`,
-`faturamento` e `OS48-CREA` (estes dois na org `KodiumAI`; o segundo alimenta `gestao`),
-além de `Embratur-Novo` (da org `gtd-embratur`). O do `embratur` builda **duas** imagens
-antes do DeployStack, porque a app tem dois runtimes distintos (Node e nginx).
+`faturamento` e `OS48-CREA` (estes dois na org `KodiumAI`; o segundo alimenta `gestao`).
 
 Este repo (**`dotfiles`**) **não tem webhook** — um push aqui pode afetar várias Stacks
 ao mesmo tempo (compose, config do Traefik, etc.) e não há mapeamento automático de

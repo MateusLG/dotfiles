@@ -6,25 +6,6 @@ enabled = true
 ##
 
 [[stack]]
-name = "embratur"
-[stack.config]
-server = "srv1"
-auto_pull = false
-repo = "MateusLG/dotfiles"
-run_directory = "vps/stacks/embratur"
-environment = """
-EMBRATUR_DATABASE_URL=[[EMBRATUR_DATABASE_URL]]
-EMBRATUR_PAYLOAD_SECRET=[[EMBRATUR_PAYLOAD_SECRET]]
-EMBRATUR_INTERNAL_ALERT_TOKEN=[[EMBRATUR_INTERNAL_ALERT_TOKEN]]
-EMBRATUR_TURNSTILE_SECRET=[[EMBRATUR_TURNSTILE_SECRET]]
-EMBRATUR_GOOGLE_CLIENT_ID=[[EMBRATUR_GOOGLE_CLIENT_ID]]
-EMBRATUR_GOOGLE_CLIENT_SECRET=[[EMBRATUR_GOOGLE_CLIENT_SECRET]]
-EMBRATUR_ALLOWED_HD=[[EMBRATUR_ALLOWED_HD]]
-"""
-
-##
-
-[[stack]]
 name = "ericsongomes"
 [stack.config]
 server = "srv1"
@@ -86,42 +67,12 @@ GESTAO_CONFORMIDADE_ATIVA=[[GESTAO_CONFORMIDADE_ATIVA]]
 ##
 
 [[stack]]
-name = "itsm"
-[stack.config]
-server = "srv1"
-auto_pull = false
-repo = "MateusLG/dotfiles"
-run_directory = "vps/stacks/itsm"
-environment = """
-ITSM_DATABASE_URL=[[ITSM_DATABASE_URL]]
-ITSM_NEXTAUTH_SECRET=[[ITSM_NEXTAUTH_SECRET]]
-ITSM_ADMIN_LOGIN_EMAIL=[[ITSM_ADMIN_LOGIN_EMAIL]]
-ITSM_ADMIN_PASSWORD_HASH=[[ITSM_ADMIN_PASSWORD_HASH]]
-"""
-
-##
-
-[[stack]]
 name = "lgmateus"
 [stack.config]
 server = "srv1"
 auto_pull = false
 repo = "MateusLG/dotfiles"
 run_directory = "vps/stacks/lgmateus"
-
-##
-
-[[stack]]
-name = "sipe"
-[stack.config]
-server = "srv1"
-auto_pull = false
-repo = "MateusLG/dotfiles"
-run_directory = "vps/stacks/sipe"
-environment = """
-SIPE_DATABASE_URL=[[SIPE_DATABASE_URL]]
-SIPE_NEXTAUTH_SECRET=[[SIPE_NEXTAUTH_SECRET]]
-"""
 
 ##
 
@@ -149,34 +100,6 @@ TURMASUNB_BACKUP_PATH=[[TURMASUNB_BACKUP_PATH]]
 TURMASUNB_BACKUP_INTERVAL_HOURS=[[TURMASUNB_BACKUP_INTERVAL_HOURS]]
 TURMASUNB_BACKUP_MAX_FILES=[[TURMASUNB_BACKUP_MAX_FILES]]
 """
-
-##
-
-[[build]]
-name = "embratur"
-[build.config]
-builder = "srv1"
-git_account = "MateusLG"
-repo = "gtd-embratur/Embratur-Novo"
-use_buildx = true
-extra_args = [
-  "--target=runtime",
-  "--secret=id=gh_token,src=/etc/komodo/secrets/embratur-gh-packages-token"
-]
-
-##
-
-[[build]]
-name = "embratur-site"
-[build.config]
-builder = "srv1"
-git_account = "MateusLG"
-repo = "gtd-embratur/Embratur-Novo"
-use_buildx = true
-extra_args = [
-  "--target=site",
-  "--secret=id=gh_token,src=/etc/komodo/secrets/embratur-gh-packages-token"
-]
 
 ##
 
@@ -212,33 +135,11 @@ VITE_SGF_RMO_URL_TEMPLATE=[[GESTAO_VITE_SGF_RMO_URL_TEMPLATE]]
 ##
 
 [[build]]
-name = "itsm"
-[build.config]
-builder = "srv1"
-git_account = "MateusLG"
-repo = "gtd-embratur/itsm-embratur"
-secret_args = """
-GITHUB_PACKAGES_TOKEN=[[GITHUB_PACKAGES_TOKEN]]
-"""
-
-##
-
-[[build]]
 name = "lgmateus"
 [build.config]
 builder = "srv1"
 git_account = "MateusLG"
 repo = "MateusLG/lgmateus.com"
-
-##
-
-[[build]]
-name = "sipe"
-[build.config]
-builder = "srv1"
-git_account = "MateusLG"
-repo = "gtd-embratur/novo-sipe"
-branch = "feat/homolog-login"
 
 ##
 
@@ -296,26 +197,6 @@ executions = [
 ##
 
 [[procedure]]
-name = "deploy-embratur"
-
-[[procedure.config.stage]]
-name = "Build"
-enabled = true
-executions = [
-  { execution.type = "RunBuild", execution.params.build = "embratur", enabled = true },
-  { execution.type = "RunBuild", execution.params.build = "embratur-site", enabled = true }
-]
-
-[[procedure.config.stage]]
-name = "Deploy"
-enabled = true
-executions = [
-  { execution.type = "DeployStack", execution.params.stack = "embratur", execution.params.services = [], enabled = true }
-]
-
-##
-
-[[procedure]]
 name = "deploy-ericsongomes"
 
 [[procedure.config.stage]]
@@ -368,25 +249,6 @@ name = "Deploy"
 enabled = true
 executions = [
   { execution.type = "DeployStack", execution.params.stack = "gestao", execution.params.services = [], enabled = true }
-]
-
-##
-
-[[procedure]]
-name = "deploy-itsm"
-
-[[procedure.config.stage]]
-name = "Build"
-enabled = true
-executions = [
-  { execution.type = "RunBuild", execution.params.build = "itsm", enabled = true }
-]
-
-[[procedure.config.stage]]
-name = "Deploy"
-enabled = true
-executions = [
-  { execution.type = "DeployStack", execution.params.stack = "itsm", execution.params.services = [], enabled = true }
 ]
 
 ##
