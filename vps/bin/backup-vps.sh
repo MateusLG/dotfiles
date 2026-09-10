@@ -2,8 +2,8 @@
 # Backup da VPS: coleta o insubstituivel para o cenario "a VPS pegou fogo,
 # so tenho este tarball e o GitHub" - bancos, o estado do Komodo (stacks,
 # builds, procedures, variables), secrets, volumes docker com dado real,
-# configs de sistema, mundo do Minecraft, chave do rustdesk. Codigo dos apps
-# nao entra: esta todo no GitHub e o Komodo rebuilda a imagem a partir dele.
+# configs de sistema, mundo do Minecraft. Codigo dos apps nao entra: esta
+# todo no GitHub e o Komodo rebuilda a imagem a partir dele.
 #
 # Pos-migracao systemd+nginx -> Komodo+Traefik (2026-08): as 5 apps viram
 # container, /srv/<app>, /var/www e os users de sistema por app foram
@@ -117,13 +117,11 @@ for u in root mateus minecraft; do
 done > "$INV/crontabs.txt"
 { echo "# porta -> processo"; sudo ss -tlnp; } > "$INV/listening-ports.txt" 2>&1 || true
 
-# repos: onde o codigo vive, para reclonar no destino. As 5 apps nao tem mais
-# clone de trabalho na VPS (o Komodo builda direto do GitHub); o que sobra
-# clonado aqui e o dotfiles e os repos de trabalho em ~/dev.
+# repos: onde o codigo vive, para reclonar no destino. Desde 2026-09-10 a VPS
+# nao tem clone de trabalho (~/dev foi removido; so hospedagem + servidor) -
+# o unico repo aqui e o dotfiles.
 {
-  for d in /home/mateus/infra/dotfiles \
-           /home/mateus/dev/*/*/ \
-           /home/mateus/dev/*/*/sistemas/*/*/; do
+  for d in /home/mateus/infra/dotfiles; do
     d=${d%/}
     [ -d "$d/.git" ] || continue
     printf '%s\n  remote: %s\n  branch: %s\n  head:   %s\n' "$d" \
@@ -278,11 +276,6 @@ sudo tar -I 'zstd -3 -T0' -cf "$DEST/minecraft.tar.zst" \
 
 restart_minecraft
 log "minecraft religado"
-
-# ----------------------------------------------------------------- rustdesk ---
-log "=== rustdesk (chave do servidor + db) ==="
-sudo tar czf "$DEST/rustdesk.tar.gz" -C /home/mateus rustdesk \
-  2>&1 | grep -v 'Removing leading' | tee -a "$LOG" || true
 
 # --------------------------------------------------------------- pg history ---
 log "=== historico de dumps diarios ==="

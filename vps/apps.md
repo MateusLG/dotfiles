@@ -7,12 +7,16 @@ e do systemd+nginx pro Komodo+Traefik em containers em agosto/2026).
 |--------------|-----------------|--------------------|------------------------------------------------|
 | lgmateus     | `lgmateus`      | 3000               | lgmateus.com, www.lgmateus.com                  |
 | turmasunb    | `turmasunb`     | 8000               | turmasunb.com, www.turmasunb.com                |
-| album-copa   | `albumcopa`     | 8001               | album.lgmateus.com                              |
 | os48 / CREA  | `gestao`        | 8002               | crea.lglabs.tech                                |
 | ericsongomes | `ericsongomes`  | 8080               | ericsongomes.com.br, www.ericsongomes.com.br    |
 | embratur     | `embratur`      | 8080 / 8080 / 22327 | embratur.lglabs.tech                            |
 | sipe         | `sipe`          | 3000               | sipe.lglabs.tech                                |
 | faturamento  | `faturamento`   | 8000               | faturamento.kodium.ai                         |
+
+Removidos em **2026-09-10**: `album-copa` (album.lgmateus.com; último dump em
+`~/backups/albumcopa/`) e a stack `rustdesk`. O ambiente de teste `patrocinio.lglabs.tech`
+(processos no host + rota solta no `dynamic/` do Traefik, nunca versionada) saiu no mesmo
+dia. Falta só o DNS dos três na Cloudflare.
 
 A stack do `gestao` tem **dois** containers: a app e o sidecar `jobs`, que roda as tarefas
 agendadas (ver seção própria). A do `embratur` tem **três** — ver abaixo. As demais têm um só.
@@ -91,14 +95,14 @@ confirmados.
 ## Isolamento (container)
 
 Cada app roda como container **não-root** (`node` no lgmateus; UID `10001` em
-turmasunb/albumcopa/gestao; `101` no ericsongomes), com `cap_drop: ALL`,
+turmasunb/gestao; `101` no ericsongomes), com `cap_drop: ALL`,
 `no-new-privileges` e `read_only: true` na raiz (exceto turmasunb, que escreve backup
 em volume) — os diretórios que a app precisa escrever viram `tmpfs`. Cada container só
 entra nas redes Docker que precisa:
 
-- **`edge`**: todos os 5, é a rede que o Traefik enxerga (`exposedByDefault: false` — só
+- **`edge`**: todas as apps, é a rede que o Traefik enxerga (`exposedByDefault: false` — só
   publica quem tem `traefik.enable=true`).
-- **`apps`**: só turmasunb, album-copa e gestao, que falam com o Postgres do host via
+- **`apps`**: só turmasunb e gestao, que falam com o Postgres do host via
   `host.docker.internal` (extra_hosts com `host-gateway`).
 
 Nada do mundo pré-container sobrou no disco. Os diretórios `/srv/<app>`, os users de
@@ -121,7 +125,7 @@ navegador → Cloudflare (proxy laranja, TLS na borda)
           → VPS:443 Traefik (Origin Certificate; mTLS via Authenticated Origin Pulls
             obrigatório — tls.options=cf-aop@file — nos 5 domínios)
           → container na rede `edge` (roteado por Host() + labels do compose)
-          → Postgres nativo do host, pela rede `apps` (turmasunb, album-copa, gestao)
+          → Postgres nativo do host, pela rede `apps` (turmasunb, gestao)
 ```
 
 Sem nginx no caminho: quem termina TLS, roteia por domínio e fala com o Docker é o
@@ -139,7 +143,7 @@ RunBuild (rebuilda a imagem <app>:latest do commit novo)
   → DeployStack (docker compose up -d com a imagem nova)
 ```
 
-Repos com webhook configurado: `lgmateus`, `turmasunb`, `album-copa`, `site-ericson`,
+Repos com webhook configurado: `lgmateus`, `turmasunb`, `site-ericson`,
 `faturamento` e `OS48-CREA` (estes dois na org `KodiumAI`; o segundo alimenta `gestao`),
 além de `Embratur-Novo` (da org `gtd-embratur`). O do `embratur` builda **duas** imagens
 antes do DeployStack, porque a app tem dois runtimes distintos (Node e nginx).
@@ -162,8 +166,7 @@ As apps não leem mais `.env` do disco — a configuração vem do Komodo no mom
 Os arquivos antigos ainda existem em `/srv/turmasunb/.env` e `/srv/albumcopa/backend/.env`,
 junto do resto do material de rollback, mas nenhum container os enxerga.
 
-Os **33 Variables** cadastrados no Komodo
-(turmasunb: 6, album-copa: 1, gestao: 26) são referenciados no `environment:` de cada
+Os Variables cadastrados no Komodo são referenciados no `environment:` de cada
 Stack com a sintaxe `NOME=[[NOME_DA_VARIABLE]]` e injetados na hora do deploy. Inclui,
 no caso do gestao, as variáveis `VITE_*` do frontend — que são assadas no bundle em
 **build time**, então entram como `build_args` da Build, não só como `environment` da
@@ -193,7 +196,7 @@ que vai rodar o sistema em outro servidor, recebe o agendamento junto com o
   read-only em `/etc/ssl/cloudflare/` do host → `/certs` no container
   (`stacks/traefik/compose.yaml`) — **não versionados** (a key é segredo). Regenerar em:
   painel Cloudflare → SSL/TLS → Origin Server → Create Certificate.
-- `lgmateus.{crt,key}` é wildcard `*.lgmateus.com` (cobre `album.lgmateus.com`);
+- `lgmateus.{crt,key}` é wildcard `*.lgmateus.com`;
   `turmasunb.{crt,key}` cobre `turmasunb.com`; `lglabs.tech.{crt,key}` cobre
   `crea.lglabs.tech`; `ericsongomes.{crt,key}` cobre `ericsongomes.com.br`.
 - DNS: registros A → IP da VPS (`179.198.127.45`), **proxied**. `album` e `komodo` são A
@@ -213,9 +216,6 @@ que vai rodar o sistema em outro servidor, recebe o agendamento junto com o
 - **turmasunb**: db/role `turmasunb`, tabela `links` (PK `materia+turma`); estrutura das
   turmas vem do `data.json` versionado. Carrega em memória no boot → **redeploy da
   Stack** após mexer no banco.
-- **album-copa**: db/role `albumcopa` (tabelas `usuario`/`figurinha`/`colecao_usuario`/
-  `audit_log`), schema via **alembic** (`alembic upgrade head`, roda no container).
-  Auth é só header `X-Username` (sem senha).
 - **gestao**: db `crea_demo`, schema via alembic; contém dado de cliente em validação —
   ver `vps-os48-db-reset.md` na memória sobre reset/reseed.
 - **faturamento**: db/role `faturamento`, schema via alembic (roda no start do
@@ -223,7 +223,7 @@ que vai rodar o sistema em outro servidor, recebe o agendamento junto com o
 - Postgres escuta em `listen_addresses='*'` (`etc/postgresql/10-docker.conf`); o controle
   de acesso real é `pg_hba.conf` (scram, faixa `172.16.0.0/12` — todas as bridges do
   Docker) e `ufw` (5432 fechado pra internet, liberado só para essa faixa).
-- **Backup**: dump diário dos bancos (`turmasunb`, `albumcopa`) via `bin/pg-backup.sh` +
+- **Backup**: dump diário do banco `turmasunb` via `bin/pg-backup.sh` +
   `pg-backup.timer`, que **continuam em systemd** (retenção 14 dias em
   `/var/backups/postgres/`). Ver [`README.md`](README.md).
 - **Backup completo sob demanda**: `bin/backup-vps.sh` cobre todos os bancos do host, o
@@ -234,7 +234,7 @@ que vai rodar o sistema em outro servidor, recebe o agendamento junto com o
 
 ```sh
 docker ps --format 'table {{.Names}}\t{{.Status}}'
-docker logs -f albumcopa-albumcopa-1
+docker logs -f turmasunb-turmasunb-1
 ```
 
 Ou pela UI do Komodo (`komodo.lgmateus.com`): página da Stack → aba Log/Containers.

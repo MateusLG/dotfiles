@@ -6,19 +6,6 @@ enabled = true
 ##
 
 [[stack]]
-name = "albumcopa"
-[stack.config]
-server = "srv1"
-auto_pull = false
-repo = "MateusLG/dotfiles"
-run_directory = "vps/stacks/albumcopa"
-environment = """
-ALBUMCOPA_DATABASE_URL=[[ALBUMCOPA_DATABASE_URL]]
-"""
-
-##
-
-[[stack]]
 name = "embratur"
 [stack.config]
 server = "srv1"
@@ -125,15 +112,6 @@ run_directory = "vps/stacks/lgmateus"
 ##
 
 [[stack]]
-name = "rustdesk"
-[stack.config]
-server = "srv1"
-repo = "MateusLG/dotfiles"
-run_directory = "vps/stacks/rustdesk"
-
-##
-
-[[stack]]
 name = "sipe"
 [stack.config]
 server = "srv1"
@@ -171,15 +149,6 @@ TURMASUNB_BACKUP_PATH=[[TURMASUNB_BACKUP_PATH]]
 TURMASUNB_BACKUP_INTERVAL_HOURS=[[TURMASUNB_BACKUP_INTERVAL_HOURS]]
 TURMASUNB_BACKUP_MAX_FILES=[[TURMASUNB_BACKUP_MAX_FILES]]
 """
-
-##
-
-[[build]]
-name = "albumcopa"
-[build.config]
-builder = "srv1"
-git_account = "MateusLG"
-repo = "MateusLG/album-copa"
 
 ##
 
@@ -322,25 +291,6 @@ name = "Stage 1"
 enabled = true
 executions = [
   { execution.type = "RotateAllServerKeys", execution.params = {}, enabled = true }
-]
-
-##
-
-[[procedure]]
-name = "deploy-albumcopa"
-
-[[procedure.config.stage]]
-name = "Build"
-enabled = true
-executions = [
-  { execution.type = "RunBuild", execution.params.build = "albumcopa", enabled = true }
-]
-
-[[procedure.config.stage]]
-name = "Deploy"
-enabled = true
-executions = [
-  { execution.type = "DeployStack", execution.params.stack = "albumcopa", execution.params.services = [], enabled = true }
 ]
 
 ##

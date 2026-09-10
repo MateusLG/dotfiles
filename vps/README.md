@@ -16,14 +16,14 @@ Usuário comum `mateus` no grupo `sudo`. Os arquivos espelham os caminhos reais 
 - [`komodo-sync/resources.toml`](komodo-sync/resources.toml) — export do estado do
   Komodo (Stacks, Builds, Server, Procedures) via Resource Sync, versionado para
   auditoria; não é aplicado automaticamente.
-- [`stacks/`](stacks/) — um diretório por Stack (`lgmateus`, `turmasunb`, `albumcopa`,
-  `gestao`, `ericsongomes`, `traefik`, `rustdesk`), cada um com o `compose.yaml` que o
+- [`stacks/`](stacks/) — um diretório por Stack (`lgmateus`, `turmasunb`, `gestao`,
+  `ericsongomes`, `embratur`, `sipe`, `faturamento`, `itsm`, `traefik`), cada um com o `compose.yaml` que o
   Komodo faz pull e sobe.
 - [`bin/ufw-cloudflare.sh`](bin/ufw-cloudflare.sh) — restringe `80/443` às faixas de IP da Cloudflare.
 - [`bin/pg-backup.sh`](bin/pg-backup.sh) — dump diário dos bancos Postgres (`pg-backup.timer`).
 - [`bin/backup-vps.sh`](bin/backup-vps.sh) — backup do insubstituível (bancos,
-  banco do Komodo, secrets, volumes docker com dado, mundo do Minecraft, chave do
-  rustdesk, configs de sistema). Código das apps não entra — está no GitHub.
+  banco do Komodo, secrets, volumes docker com dado, mundo do Minecraft, configs
+  de sistema). Código das apps não entra — está no GitHub.
 - [`mobile-claude.md`](mobile-claude.md) — acesso ao Claude Code pelo celular (mosh + tmux + Termius).
 - `etc/systemd/system/{pg-backup.service,pg-backup.timer}` → as únicas units de app que
   seguem em systemd (as 4 apps migradas foram removidas daqui e do host).
@@ -128,7 +128,7 @@ Duas rotas, dependendo de onde está o problema:
 
 ### Backup do Postgres
 
-[`bin/pg-backup.sh`](bin/pg-backup.sh) faz `pg_dump -Fc` de `turmasunb` e `albumcopa`
+[`bin/pg-backup.sh`](bin/pg-backup.sh) faz `pg_dump -Fc` de `turmasunb`
 pra `/var/backups/postgres/`, com retenção de **14 dias**. Roda como o user `postgres`
 (peer auth) via `pg-backup.service`, agendado **diário** pelo `pg-backup.timer`
 (`Persistent=true` — recupera execução perdida se a VPS estava off). É o complemento
@@ -143,8 +143,7 @@ o disco morrer: todos os bancos Postgres do host, o banco do Komodo (backup nati
 `km database backup`, cobre Stacks/Builds/Procedures/Variables — inclusive as 33
 Variables com senha de banco, tokens e o PAT do GitHub), `compose.env`/`api.env` do
 Komodo, os volumes docker com dado real (backups do turmasunb, chaves Ed25519
-Core↔Periphery do Komodo), `/etc/ssl/cloudflare`, o mundo do Minecraft e os dados do
-RustDesk (chave do servidor). Não é agendado — roda sob demanda antes de mexer grande na
+Core↔Periphery do Komodo), `/etc/ssl/cloudflare` e o mundo do Minecraft. Não é agendado — roda sob demanda antes de mexer grande na
 VPS. Seguro rodar com tudo no ar: nenhum container é parado, só o `minecraft.service`
 pausa por alguns segundos pra consistência do mundo.
 
@@ -168,11 +167,11 @@ tabela própria `f2b-table`, não conflita com o ufw).
 ### Home (layout)
 
 Organizada por **papel**, não por ferramenta — nome de ferramenta vira mentira no dia em
-que a ferramenta muda:
+que a ferramenta muda. Desde **2026-09-10** a VPS é só hospedagem + servidor: **não há
+`~/dev`** nem clone de trabalho aqui.
 
 ```
-~/dev/<cliente>/<projeto>   trabalho (kodium/, embratur/, pessoal/)
-~/infra/                    dotfiles, rustdesk
+~/infra/                    dotfiles
 ~/docs/                     runbooks
 ~/backups/                  dumps
 ```
