@@ -186,3 +186,6 @@ source "$HOME/.config/zsh/powerlevel10k/powerlevel10k.zsh-theme"
 
 # rustup / cargo env (se existir)
 [[ -f "$HOME/.local/bin/env" ]] && . "$HOME/.local/bin/env"
+
+alias fio='/opt/homebrew/bin/godot --path /Users/mateus/DEV/fio-de-mare'
+alias marca='/opt/homebrew/bin/godot --path /Users/mateus/DEV/dotsmith/a-marca'
