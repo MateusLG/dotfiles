@@ -18,6 +18,9 @@ aqui, mas estão no histórico do git.
 - `install.sh` — instalador idempotente (symlinks + backup do que existia).
 - `install-nerdfonts.sh` — Nerd Fonts em `~/Library/Fonts`, sem sudo.
 - `merge-codex-config.py` — merge do config do Codex (ver abaixo).
+- `power-watch.sh` — vai em `~/.local/bin/power-watch`. Daemon de energia (ver abaixo).
+- `com.mateus.power-watch.plist` — LaunchAgent do power-watch (copiado, não linkado).
+- `sudoers-pmset` — regra de sudo pro power-watch alternar o sleep. Instalação manual.
 
 ## Diferenças em relação ao zshrc do WSL/Arch
 
@@ -55,6 +58,29 @@ máquina (`[marketplaces.*]`, `[mcp_servers.*]`, `[projects.*]`, `notify`) com
 paths absolutos — copiar o do repo por cima destrói isso. O
 `merge-codex-config.py` junta os dois: preferências do repo mandam, blocos da
 máquina são preservados. Roda dentro do `install.sh`, com backup antes.
+
+## power-watch
+
+Padrão do macOS: fechar a tampa ou ficar ocioso põe o Mac pra dormir e mata
+qualquer coisa rodando no terminal (Claude Code, Codex). O `power-watch`
+inverte isso, sem nenhum comando no dia a dia:
+
+- **Sempre acordado (tomada ou bateria):** `pmset disablesleep 1`. Fechar a
+  tampa ou bloquear a tela só apaga o painel; o sistema segue rodando. Com
+  "exigir senha imediatamente" ligado em Ajustes > Tela de Bloqueio, apagar
+  a tela já bloqueia.
+- **Bateria em 15%** desplugado: o sleep volta ao normal. Se o Mac estiver
+  fechado ou bloqueado, dorme na hora (hiberna em vez de desligar seco). Ao
+  plugar ou subir de 15%, volta ao acordado.
+
+Na mochila com a tampa fechada ele fica ligado e morno até os 15%. É o
+preço de não ter passo manual.
+
+O daemon faz polling a cada 3 s (tampa, bloqueio, carregador, bateria) e
+escreve em `~/.local/state/power-watch/log`. A troca do `disablesleep` passa
+por `sudo`, por isso a regra em `/etc/sudoers.d/pmset` — o `install.sh` avisa
+se ela não existir. Pra desinstalar: `launchctl bootout gui/$(id -u)/com.mateus.power-watch`,
+apagar o plist e a regra de sudo, e `sudo pmset -a disablesleep 0`.
 
 ## Rede com inspeção TLS
 

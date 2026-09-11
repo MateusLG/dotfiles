@@ -126,6 +126,23 @@ for s in "$REPO"/agents/skills/*/; do
   info "skill copiada: $n"
 done
 
+# ─────────────────────────── power-watch ─────────────────────────
+# Mantém o Mac acordado na tomada e dormindo na bateria (ver README).
+link "$REPO/macos/power-watch.sh" "$HOME/.local/bin/power-watch"
+PW_PLIST="$HOME/Library/LaunchAgents/com.mateus.power-watch.plist"
+# launchd não gosta de symlink em LaunchAgents: copia e só recarrega se mudou.
+if ! cmp -s "$REPO/macos/com.mateus.power-watch.plist" "$PW_PLIST"; then
+  mkdir -p "$(dirname "$PW_PLIST")"
+  cp "$REPO/macos/com.mateus.power-watch.plist" "$PW_PLIST"
+  launchctl bootout "gui/$(id -u)/com.mateus.power-watch" 2>/dev/null || true
+  launchctl bootstrap "gui/$(id -u)" "$PW_PLIST"
+  info "power-watch carregado no launchd"
+fi
+if [[ ! -f /etc/sudoers.d/pmset ]]; then
+  warn "power-watch precisa da regra de sudo (pede senha — precisa ser você):"
+  warn "  sudo install -m 0440 -o root -g wheel $REPO/macos/sudoers-pmset /etc/sudoers.d/pmset"
+fi
+
 # ───────────────────────────── Neovim ────────────────────────────
 # O keymaps.lua é uma customização SOBRE o LazyVim; sem ele, não faz nada.
 if [[ ! -d "$HOME/.config/nvim" ]]; then
