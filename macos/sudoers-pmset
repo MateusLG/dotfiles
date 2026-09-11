@@ -1,0 +1,3 @@
+# power-watch alterna o sleep sem senha. Instalar com:
+#   sudo install -m 0440 -o root -g wheel macos/sudoers-pmset /etc/sudoers.d/pmset
+mateus ALL=(root) NOPASSWD: /usr/bin/pmset -a disablesleep 0, /usr/bin/pmset -a disablesleep 1
