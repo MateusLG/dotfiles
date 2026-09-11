@@ -1,0 +1,78 @@
+[user]
+	name = Mateus Lira
+	email = mateuslira3105@gmail.com
+
+[init]
+	defaultBranch = main
+
+[core]
+	editor = nvim
+	autocrlf = input
+	excludesFile = ~/.gitignore_global
+
+[pull]
+	rebase = true
+
+[push]
+	default = current
+	autoSetupRemote = true
+	followTags = true
+
+[fetch]
+	prune = true
+	pruneTags = true
+
+[rebase]
+	autoStash = true
+	autoSquash = true
+	updateRefs = true
+
+[merge]
+	conflictStyle = zdiff3
+
+[diff]
+	algorithm = histogram
+	colorMoved = default
+	mnemonicPrefix = true
+
+[rerere]
+	enabled = true
+	autoUpdate = true
+
+[branch]
+	sort = -committerdate
+
+[tag]
+	sort = version:refname
+
+[column]
+	ui = auto
+
+[commit]
+	verbose = true
+
+[help]
+	autoCorrect = prompt
+
+[alias]
+	st = status -sb
+	co = checkout
+	sw = switch
+	br = branch
+	ci = commit
+	ca = commit --amend --no-edit
+	lg = log --oneline --graph --decorate
+	lga = log --oneline --graph --decorate --all
+	last = log -1 --stat
+	unstage = restore --staged
+	undo = reset --soft HEAD~1
+	wip = !git add -A && git commit -m wip
+	pf = push --force-with-lease
+
+[credential "https://github.com"]
+	helper =
+	helper = !/opt/homebrew/bin/gh auth git-credential
+
+[credential "https://gist.github.com"]
+	helper =
+	helper = !/opt/homebrew/bin/gh auth git-credential
