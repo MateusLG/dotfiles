@@ -12,6 +12,8 @@ aqui, mas estão no histórico do git.
 
 - `zshrc` — vai em `~/.zshrc`.
 - `p10k.zsh` — vai em `~/.p10k.zsh`. Gerado pelo `p10k configure`.
+- `gitconfig` — vai em `~/.gitconfig`. Identidade, editor, aliases e credential via `gh`.
+- `gitignore_global` — vai em `~/.gitignore_global`.
 - `Brewfile` — dependências. `brew bundle --file=macos/Brewfile`.
 - `install.sh` — instalador idempotente (symlinks + backup do que existia).
 - `install-nerdfonts.sh` — Nerd Fonts em `~/Library/Fonts`, sem sudo.

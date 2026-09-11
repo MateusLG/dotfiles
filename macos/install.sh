@@ -78,6 +78,10 @@ fi
 link "$REPO/macos/zshrc"   "$HOME/.zshrc"
 link "$REPO/macos/p10k.zsh" "$HOME/.p10k.zsh"
 
+# ──────────────────────────── Git ────────────────────────────────
+link "$REPO/macos/gitconfig"        "$HOME/.gitconfig"
+link "$REPO/macos/gitignore_global" "$HOME/.gitignore_global"
+
 
 # ──────────────────────────── Claude ─────────────────────────────
 link "$REPO/claude/CLAUDE.md"     "$HOME/.claude/CLAUDE.md"
