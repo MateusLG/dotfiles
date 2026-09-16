@@ -12,7 +12,7 @@ e do systemd+nginx pro Komodo+Traefik em containers em agosto/2026).
 | faturamento  | `faturamento`   | 8000               | faturamento.kodium.ai                         |
 | SiPE (homolog) | `sipe-hom`    | 3000               | sipe-hom.lglabs.tech                            |
 | ITSM (homolog) | `itsm-hom`    | 5000               | itsm-hom.lglabs.tech                            |
-| Patrocínio (homolog) | `patrocinio-hom` | 8080 (api+web) | patrocinio-hom.lglabs.tech              |
+| Patrocínio (homolog) | `patrocinio-hom` **(parada)** | 8080 (api+web) | patrocinio-hom.lglabs.tech    |
 
 Removidos em **2026-09-10**: `album-copa` (album.lgmateus.com; último dump em
 `~/backups/albumcopa/`), a stack `rustdesk`, o ambiente de teste `patrocinio.lglabs.tech`
@@ -130,6 +130,12 @@ não consegue escrever.
 Sem webhook de deploy, igual ao sipe-hom.
 
 ## patrocinio-hom (homologação do Patrocínio)
+
+> **Parada desde 2026-09-16, a pedido — não apagada.** `StopStack patrocinio-hom` no Komodo:
+> os dois containers ficam `Exited`, o Traefik perde a rota (o domínio responde 404) e todo
+> o resto continua de pé — stack, as duas Builds, as imagens, as Variables, o banco
+> `patrocinio_hom` com o seed e este compose. Religar é `StartStack` (ou `DeployStack`, que
+> recria os containers). Mesma situação da `lgmateus`.
 
 Homologação do **Sistema de Patrocínio** (`gtd-embratur/patrocinio-novo`): ciclo da proposta
 enviada pela organização até a prestação de contas, nota fiscal e encaminhamento pra
