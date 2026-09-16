@@ -10,6 +10,7 @@ e do systemd+nginx pro Komodo+Traefik em containers em agosto/2026).
 | os48 / CREA  | `gestao`        | 8002               | crea.lglabs.tech                                |
 | ericsongomes | `ericsongomes`  | 8080               | ericsongomes.com.br, www.ericsongomes.com.br    |
 | faturamento  | `faturamento`   | 8000               | faturamento.kodium.ai                         |
+| SiPE (homolog) | `sipe-hom`    | 3000               | sipe-hom.lglabs.tech                            |
 
 Removidos em **2026-09-10**: `album-copa` (album.lgmateus.com; último dump em
 `~/backups/albumcopa/`), a stack `rustdesk`, o ambiente de teste `patrocinio.lglabs.tech`
@@ -18,6 +19,10 @@ Removidos em **2026-09-10**: `album-copa` (album.lgmateus.com; último dump em
 (`embratur_novo`, `sipe`, `itsm`), volumes (`embratur_media`, `itsm_anexos`), secrets em
 `/etc/komodo/secrets` e webhooks — sem backup, por decisão. `lgmateus` está **parada** (não
 apagada). Pendente só o DNS `album.lgmateus.com` (lglabs.tech é A wildcard).
+
+Em **2026-09-16** o SiPE voltou — **só como homologação** (`sipe-hom`, ver seção própria),
+a pedido, num banco novo e sem nenhum dado da GTD restaurado. `embratur` e `itsm` seguem
+fora.
 
 A stack do `gestao` tem **dois** containers: a app e o sidecar `jobs`, que roda as tarefas
 agendadas (ver seção própria). As demais têm um só.
@@ -39,10 +44,52 @@ confirmados.
 - Uploads (termos de aceite) no volume `uploads` da stack.
 - `TZ=America/Sao_Paulo` no compose: `date.today()` define as datas de negócio.
 
+## sipe-hom (homologação do SiPE)
+
+Homologação do **SiPE** (`gtd-embratur/novo-sipe`), o Sistema Integrado de Planejamento
+Estratégico da Embratur: Next 16 + Prisma + Auth.js v5, para o usuário testar fora do
+cluster da Embratur.
+
+**Não confundir com o homolog institucional** (`sipehom.embratur.com.br`), que roda no
+Docker Swarm deles via Portainer, a partir do `stack.homol.yml` do repo da app. Aquele usa
+login Google normal; este aqui é o cenário "VPS externa" que o próprio código prevê.
+
+- `HOMOL=true` desliga o login Google (fail-closed) e liga o **picker de personas sem
+  senha** da tela de login — 8 personas `@homolog.embratur.local`, uma por papel, criadas
+  por `scripts/seed-homolog.ts`. O picker é persona-only: mesmo que um usuário real fosse
+  parar no banco, ele não apareceria na lista.
+- **O domínio não pode ser `embratur.com.br` nem subdomínio.** Com `HOMOL=true`, a guarda
+  de boot (`instrumentation-node.ts`) resolve `AUTH_URL ?? NEXTAUTH_URL` e faz
+  `process.exit(1)` se o host for institucional — senão seria login sem senha no ambiente
+  real. Daí `sipe-hom.lglabs.tech`.
+- **Aberto na internet, por decisão de 2026-09-16.** Como o picker não pede senha, quem
+  chegar na URL entra como Admin. Não há Cloudflare Access na frente, ao contrário do
+  painel do Komodo. O que limita o estrago: as personas são sintéticas
+  (`@homolog.embratur.local`), o banco é só do ambiente e o sync com o Workspace nunca
+  roda aqui, então não há dado pessoal real pra vazar. Se um dia precisar de barreira sem
+  mexer na Cloudflare, um middleware `basicAuth` no router do Traefik resolve com um
+  label.
+- Banco `sipe_hom` no Postgres do host. O entrypoint da imagem roda `prisma migrate deploy`
+  com retry antes de servir; o seed é **opt-in** (`SEED_AUTOMATICO` não setado), então
+  rodar seed é manual — `prisma/seed.ts` (base) e depois `scripts/seed-homolog.ts`
+  (personas, exige `HOMOL=true`).
+- **Sem o service `sync-workspace`** do stack original: ele importaria os ~300 usuários
+  reais do Google Workspace pra esta VPS, e o runbook da app marca isso como risco LGPD.
+  Por isso também não há nenhuma `GOOGLE_*` na stack.
+- Integração **Hermes desligada** (`HERMES_INTEGRACAO_DESABILITADA=1`); o
+  `SKIP_HERMES_SECRETS_BOOT_CHECK=1` é obrigatório junto, senão o boot aborta cobrando os
+  secrets HMAC mesmo com a integração off.
+- Os módulos Relato de Ação e Indicadores, que o homolog institucional desliga na janela
+  GPE 2027, ficam **ligados** aqui — o ambiente existe pra testar o sistema inteiro.
+
+Sem webhook de deploy: a Build aponta pra `main` do repo da app, mas quem decide quando
+subir versão nova é o usuário (`RunBuild sipe-hom` → `DeployStack sipe-hom`). Um push na
+`main` do SiPE não redeploya este ambiente sozinho.
+
 ## Isolamento (container)
 
 Cada app roda como container **não-root** (`node` no lgmateus; UID `10001` em
-turmasunb/gestao; `101` no ericsongomes), com `cap_drop: ALL`,
+turmasunb/gestao; `101` no ericsongomes; `1001` no sipe-hom), com `cap_drop: ALL`,
 `no-new-privileges` e `read_only: true` na raiz (exceto turmasunb, que escreve backup
 em volume) — os diretórios que a app precisa escrever viram `tmpfs`. Cada container só
 entra nas redes Docker que precisa:
@@ -50,7 +97,9 @@ entra nas redes Docker que precisa:
 - **`edge`**: todas as apps, é a rede que o Traefik enxerga (`exposedByDefault: false` — só
   publica quem tem `traefik.enable=true`).
 - **`apps`**: só turmasunb e gestao, que falam com o Postgres do host via
-  `host.docker.internal` (extra_hosts com `host-gateway`).
+  `host.docker.internal` (extra_hosts com `host-gateway`). É legado da migração: o
+  `extra_hosts` sozinho já resolve o host-gateway de qualquer bridge, então faturamento e
+  sipe-hom alcançam o Postgres estando só na `edge`.
 
 Nada do mundo pré-container sobrou no disco. Os diretórios `/srv/<app>`, os users de
 sistema (`lgmateus`, `turmasunb`, `albumcopa`, `gestao`) e o `/var/www` foram removidos em
@@ -92,6 +141,8 @@ RunBuild (rebuilda a imagem <app>:latest do commit novo)
 
 Repos com webhook configurado: `lgmateus`, `turmasunb`, `site-ericson`,
 `faturamento` e `OS48-CREA` (estes dois na org `KodiumAI`; o segundo alimenta `gestao`).
+**`novo-sipe` não tem** — o `sipe-hom` é homologação e sobe versão quando o usuário manda
+(ver seção própria).
 
 Este repo (**`dotfiles`**) **não tem webhook** — um push aqui pode afetar várias Stacks
 ao mesmo tempo (compose, config do Traefik, etc.) e não há mapeamento automático de
@@ -165,6 +216,9 @@ que vai rodar o sistema em outro servidor, recebe o agendamento junto com o
   ver `vps-os48-db-reset.md` na memória sobre reset/reseed.
 - **faturamento**: db/role `faturamento`, schema via alembic (roda no start do
   container). Dado financeiro interno da Kodium.
+- **sipe-hom**: db/role `sipe_hom`, schema via `prisma migrate deploy` (roda no entrypoint
+  do container). Só dado sintético — as personas do picker e o que for criado no teste;
+  o sync com o Workspace da Embratur não roda aqui de propósito.
 - Postgres escuta em `listen_addresses='*'` (`etc/postgresql/10-docker.conf`); o controle
   de acesso real é `pg_hba.conf` (scram, faixa `172.16.0.0/12` — todas as bridges do
   Docker) e `ufw` (5432 fechado pra internet, liberado só para essa faixa).

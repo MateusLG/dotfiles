@@ -77,6 +77,20 @@ run_directory = "vps/stacks/lgmateus"
 ##
 
 [[stack]]
+name = "sipe-hom"
+[stack.config]
+server = "srv1"
+auto_pull = false
+repo = "MateusLG/dotfiles"
+run_directory = "vps/stacks/sipe-hom"
+environment = """
+SIPE_HOM_DATABASE_URL=[[SIPE_HOM_DATABASE_URL]]
+SIPE_HOM_NEXTAUTH_SECRET=[[SIPE_HOM_NEXTAUTH_SECRET]]
+"""
+
+##
+
+[[stack]]
 name = "traefik"
 [stack.config]
 server = "srv1"
@@ -140,6 +154,15 @@ name = "lgmateus"
 builder = "srv1"
 git_account = "MateusLG"
 repo = "MateusLG/lgmateus.com"
+
+##
+
+[[build]]
+name = "sipe-hom"
+[build.config]
+builder = "srv1"
+git_account = "MateusLG"
+repo = "gtd-embratur/novo-sipe"
 
 ##
 

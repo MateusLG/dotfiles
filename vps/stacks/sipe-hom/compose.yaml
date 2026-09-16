@@ -1,0 +1,97 @@
+## SiPE (Sistema Integrado de Planejamento Estratégico da Embratur) em
+## HOMOLOGAÇÃO. Repo: gtd-embratur/novo-sipe.
+##
+## Este NÃO é o homolog institucional (`sipehom.embratur.com.br`, Docker Swarm
+## + Portainer no cluster deles, `stack.homol.yml` do repo da app). É a
+## "VPS externa" que o próprio código prevê: `HOMOL=true` desliga o login
+## Google e liga o picker de personas sem senha (`lib/homolog.ts`).
+##
+## O domínio TEM que ficar fora de `embratur.com.br`: com HOMOL ligado, a
+## guarda de boot (`instrumentation-node.ts`) dá `process.exit(1)` se a URL
+## canônica for institucional — login sem senha no ambiente real.
+##
+## Diferenças em relação ao `stack.homol.yml` do repo (que é Swarm):
+##   - labels do Traefik em `labels:`, não `deploy.labels:` (fora do Swarm o
+##     provider docker do Traefik não lê `deploy.labels` e a rota não nasce);
+##   - imagem buildada localmente pelo Komodo, sem o registry on-premise;
+##   - rede `edge` no lugar de `traefik-public`, entrypoint `websecure` + AOP;
+##   - Postgres do host (banco `sipe_hom`), não um service na stack;
+##   - sem o service `sync-workspace`: ele traria os ~300 usuários reais do
+##     Workspace pra cá (o runbook da app marca isso como risco LGPD) e o
+##     picker de personas não depende dele.
+
+services:
+  sipe-hom:
+    image: sipe-hom:latest
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+      ## Next standalone escreve cache de fetch/ISR em .next/cache; com a raiz
+      ## read_only o boot falha sem isto.
+      - /app/.next/cache
+    environment:
+      ## Datas de negócio (exercício, prazos de relato) são resolvidas em
+      ## horário local, não UTC.
+      TZ: America/Sao_Paulo
+
+      ## Modo homologação: picker de personas @homolog.embratur.local sem
+      ## senha, login Google desativado (fail-closed). Endpoints
+      ## /api/homolog/* só existem com esta flag.
+      HOMOL: "true"
+
+      ## `AUTH_URL ?? NEXTAUTH_URL` é a cadeia que a guarda de boot lê — e a
+      ## que o Auth.js v5 usa pra montar o callback. Sem trailing slash.
+      NEXTAUTH_URL: https://sipe-hom.lglabs.tech
+      NEXTAUTH_SECRET: ${SIPE_HOM_NEXTAUTH_SECRET}
+      AUTH_TRUST_HOST: "true"
+
+      DATABASE_URL: ${SIPE_HOM_DATABASE_URL}
+
+      ## GOOGLE_ALLOWED_DOMAINS ausente de propósito: a checagem de domínio do
+      ## signIn é fail-closed, então a lista vazia NEGA todo login Google.
+      ## É o comportamento desejado aqui — quem entra é o picker.
+
+      ## Integração Hermes desligada (o contrato com eles não está fechado) e
+      ## boot check dos secrets HMAC pulado — sem o segundo, o boot aborta
+      ## mesmo com a integração off.
+      HERMES_INTEGRACAO_DESABILITADA: "1"
+      SKIP_HERMES_SECRETS_BOOT_CHECK: "1"
+
+      ## MODULO_RELATO_ACAO_DESABILITADO / MODULO_INDICADORES_DESABILITADO
+      ## ausentes de propósito: o homolog institucional desliga os dois na
+      ## janela GPE 2027, aqui o ambiente existe pra testar o sistema inteiro.
+
+      ## A doc MkDocs não sobe nesta VPS; vazio esconde o item do menu em vez
+      ## de deixar um link pra 404.
+      DOCS_URL: ""
+
+      LOG_LEVEL: info
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.sipe-hom.rule=Host(`sipe-hom.lglabs.tech`)
+      - traefik.http.routers.sipe-hom.entrypoints=websecure
+      - traefik.http.routers.sipe-hom.tls.options=cf-aop@file
+      - traefik.http.services.sipe-hom.loadbalancer.server.port=3000
+    healthcheck:
+      ## /api/health pinga o Postgres: 200 ou 503. `wget --spider` trata
+      ## >= 400 como falha. start_period cobre o `prisma migrate deploy` que
+      ## o entrypoint roda antes de servir.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+networks:
+  edge:
+    external: true
