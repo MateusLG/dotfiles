@@ -1,0 +1,105 @@
+## Sistema de Patrocínio da Embratur (proposta → análise → prestação de contas
+## → NF → pagamento) em HOMOLOGAÇÃO. Repo: gtd-embratur/patrocinio-novo.
+##
+## LIMITAÇÃO CONHECIDA, aceita ao subir (2026-09-16): **anexos não funcionam.**
+## O `objectStorage.ts` da API fala direto com o sidecar do Replit
+## (127.0.0.1:1106) para pegar credencial GCS e gerar presigned URL — o browser
+## faz PUT direto no bucket. Não existe backend alternativo (o ITSM tem o
+## fallback ANEXOS_DIR; aqui não). Fora do Replit, upload e download de arquivo
+## respondem erro: anexo de proposta, nota fiscal e os comprobatórios da
+## prestação de contas. O resto do fluxo (login, proposta, tramitação, admin,
+## gabinete, RBAC) funciona. Resolver isso é PR no repo da app, porque o
+## contrato de upload nasce no api-spec (OpenAPI) e desce para o api-zod e o
+## api-client-react gerados.
+##
+## O repo não tem Dockerfile — é canônico no Replit (Autoscale). Os dois
+## Dockerfiles vivem na **config das Builds do Komodo** (`patrocinio-hom-api` e
+## `patrocinio-hom-web`), não no repo da app.
+##
+## Front e API precisam da MESMA origem: o cliente React chama caminhos
+## relativos (`/api/...`). Quem une os dois é o Traefik — o router da API casa
+## PathPrefix(`/api`) com prioridade maior, o resto cai na SPA.
+
+services:
+  api:
+    image: patrocinio-hom-api:latest
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    environment:
+      TZ: America/Sao_Paulo
+      NODE_ENV: production
+      ## Obrigatória: o index.ts lança se estiver ausente.
+      PORT: "8080"
+      DATABASE_URL: ${PATROCINIO_HOM_DATABASE_URL}
+      ## Obrigatória: o app.ts lança se estiver ausente.
+      SESSION_SECRET: ${PATROCINIO_HOM_SESSION_SECRET}
+      APP_URL: https://patrocinio-hom.lglabs.tech
+
+      ## Kill-switches explícitos dos efeitos colaterais externos. O código já
+      ## se protegeria sozinho — o portão de produção é `REPLIT_DEPLOYMENT`,
+      ## que não existe fora do Replit — mas ligar os dois evita até a
+      ## tentativa de conexão com Monday e Gmail.
+      EMAIL_DISABLED: "true"
+      MONDAY_DISABLED: "true"
+
+      ## Reconciliadas no boot: quem estiver aqui vira ADMIN/SUPER_ADMIN.
+      ## São os usuários do seed (lib/db/src/seed.ts), todos @embratur.test.
+      ADMIN_EMAILS: admin@embratur.test
+      SUPER_ADMIN_EMAILS: superadmin@embratur.test
+
+      LOG_LEVEL: info
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      ## priority acima do router da SPA: as duas regras casam o mesmo Host, e
+      ## sem isso a ordem fica por conta do tamanho da regra.
+      - traefik.http.routers.patrocinio-hom-api.rule=Host(`patrocinio-hom.lglabs.tech`) && PathPrefix(`/api`)
+      - traefik.http.routers.patrocinio-hom-api.priority=100
+      - traefik.http.routers.patrocinio-hom-api.entrypoints=websecure
+      - traefik.http.routers.patrocinio-hom-api.tls.options=cf-aop@file
+      - traefik.http.routers.patrocinio-hom-api.service=patrocinio-hom-api
+      - traefik.http.services.patrocinio-hom-api.loadbalancer.server.port=8080
+    healthcheck:
+      ## /api/healthz — não /api/health, que não existe.
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:8080/api/healthz',r=>process.exit(r.statusCode<400?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  web:
+    image: patrocinio-hom-web:latest
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+    networks:
+      - edge
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.patrocinio-hom-web.rule=Host(`patrocinio-hom.lglabs.tech`)
+      - traefik.http.routers.patrocinio-hom-web.priority=10
+      - traefik.http.routers.patrocinio-hom-web.entrypoints=websecure
+      - traefik.http.routers.patrocinio-hom-web.tls.options=cf-aop@file
+      - traefik.http.routers.patrocinio-hom-web.service=patrocinio-hom-web
+      - traefik.http.services.patrocinio-hom-web.loadbalancer.server.port=8080
+
+networks:
+  edge:
+    external: true

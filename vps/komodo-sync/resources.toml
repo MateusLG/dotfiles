@@ -91,6 +91,20 @@ run_directory = "vps/stacks/lgmateus"
 ##
 
 [[stack]]
+name = "patrocinio-hom"
+[stack.config]
+server = "srv1"
+auto_pull = false
+repo = "MateusLG/dotfiles"
+run_directory = "vps/stacks/patrocinio-hom"
+environment = """
+PATROCINIO_HOM_DATABASE_URL=[[PATROCINIO_HOM_DATABASE_URL]]
+PATROCINIO_HOM_SESSION_SECRET=[[PATROCINIO_HOM_SESSION_SECRET]]
+"""
+
+##
+
+[[stack]]
 name = "sipe-hom"
 [stack.config]
 server = "srv1"
@@ -183,6 +197,122 @@ name = "lgmateus"
 builder = "srv1"
 git_account = "MateusLG"
 repo = "MateusLG/lgmateus.com"
+
+##
+
+[[build]]
+name = "patrocinio-hom-api"
+[build.config]
+builder = "srv1"
+git_account = "MateusLG"
+repo = "gtd-embratur/patrocinio-novo"
+use_buildx = true
+secret_args = """
+GITHUB_PACKAGES_TOKEN=[[GITHUB_PACKAGES_TOKEN]]
+"""
+## O repo é canônico no Replit e não tem Dockerfile. O campo `dockerfile` da
+## Build é ignorado quando a fonte é um repo git (o Komodo passa `-f Dockerfile`
+## e falha se o arquivo não existir), então o pre_build escreve o Dockerfile no
+## clone antes do build.
+pre_build.path = "."
+pre_build.shell_mode = true
+pre_build.command = """
+cat > Dockerfile <<'DOCKERFILE_EOF'
+## Dockerfile do api-server do patrocinio-novo. Vive na config da Build do
+## Komodo, não no repo da app: o repo é canônico no Replit (Autoscale) e não
+## tem containerização própria.
+FROM node:24-slim AS build
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && corepack enable && corepack prepare pnpm@11.23.0 --activate
+COPY . .
+## As libs @gtd-embratur/* são privadas no GitHub Packages; o token entra por
+## secret mount (nunca build_arg, que ficaria no histórico da imagem).
+RUN --mount=type=secret,id=GITHUB_PACKAGES_TOKEN,required=true \
+    pnpm config set //npm.pkg.github.com/:_authToken "$(cat /run/secrets/GITHUB_PACKAGES_TOKEN)" \
+    && pnpm install --frozen-lockfile \
+    && pnpm config delete //npm.pkg.github.com/:_authToken
+RUN pnpm --filter @workspace/api-server run build
+
+FROM node:24-slim AS runner
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -u 10001 -m app
+## O bundle do esbuild externaliza vários pacotes (nodemailer, @google-cloud/*,
+## pg, etc) e importa @workspace/db pelo link do workspace — por isso o
+## node_modules do pnpm vem junto, com a árvore de symlinks intacta.
+COPY --from=build --chown=10001:10001 /app /app
+WORKDIR /app/artifacts/api-server
+USER 10001
+ENV NODE_ENV=production
+EXPOSE 8080
+CMD ["node", "--enable-source-maps", "./dist/index.mjs"]
+DOCKERFILE_EOF
+"""
+
+##
+
+[[build]]
+name = "patrocinio-hom-web"
+[build.config]
+builder = "srv1"
+git_account = "MateusLG"
+repo = "gtd-embratur/patrocinio-novo"
+use_buildx = true
+secret_args = """
+GITHUB_PACKAGES_TOKEN=[[GITHUB_PACKAGES_TOKEN]]
+"""
+## O repo é canônico no Replit e não tem Dockerfile. O campo `dockerfile` da
+## Build é ignorado quando a fonte é um repo git (o Komodo passa `-f Dockerfile`
+## e falha se o arquivo não existir), então o pre_build escreve o Dockerfile no
+## clone antes do build.
+pre_build.path = "."
+pre_build.shell_mode = true
+pre_build.command = """
+cat > Dockerfile <<'DOCKERFILE_EOF'
+## Dockerfile da SPA do patrocinio-novo (Vite → estático servido por nginx).
+## Vive na config da Build do Komodo, não no repo da app.
+FROM node:24-slim AS build
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && corepack enable && corepack prepare pnpm@11.23.0 --activate
+COPY . .
+RUN --mount=type=secret,id=GITHUB_PACKAGES_TOKEN,required=true \
+    pnpm config set //npm.pkg.github.com/:_authToken "$(cat /run/secrets/GITHUB_PACKAGES_TOKEN)" \
+    && pnpm install --frozen-lockfile \
+    && pnpm config delete //npm.pkg.github.com/:_authToken
+## O vite.config.ts lança se PORT ou BASE_PATH faltarem — vale até pro
+## `vite build`, que só carrega o config. PORT é irrelevante aqui (nada escuta
+## em build time); BASE_PATH vira o `base` do Vite, e a SPA é servida na raiz
+## do domínio, então "/".
+RUN PORT=8080 BASE_PATH=/ pnpm --filter @workspace/web run build
+
+## Unprivileged: escuta na 8080 como UID 101, igual ao ericsongomes.
+FROM nginxinc/nginx-unprivileged:alpine
+## O cliente React chama caminhos relativos (/api/...), então front e API
+## precisam da mesma origem — quem une os dois é o Traefik, por PathPrefix.
+## Aqui só o fallback de SPA: rota desconhecida devolve index.html.
+RUN printf '%s\n' \
+  'server {' \
+  '  listen 8080;' \
+  '  server_name _;' \
+  '  root /usr/share/nginx/html;' \
+  '  index index.html;' \
+  '  location /assets/ {' \
+  '    expires 1y;' \
+  '    add_header Cache-Control "public, immutable";' \
+  '    try_files $uri =404;' \
+  '  }' \
+  '  location / {' \
+  '    try_files $uri $uri/ /index.html;' \
+  '  }' \
+  '}' > /etc/nginx/conf.d/default.conf
+COPY --from=build /app/artifacts/web/dist/public /usr/share/nginx/html
+EXPOSE 8080
+DOCKERFILE_EOF
+"""
 
 ##
 

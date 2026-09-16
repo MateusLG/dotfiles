@@ -12,6 +12,7 @@ e do systemd+nginx pro Komodo+Traefik em containers em agosto/2026).
 | faturamento  | `faturamento`   | 8000               | faturamento.kodium.ai                         |
 | SiPE (homolog) | `sipe-hom`    | 3000               | sipe-hom.lglabs.tech                            |
 | ITSM (homolog) | `itsm-hom`    | 5000               | itsm-hom.lglabs.tech                            |
+| Patrocínio (homolog) | `patrocinio-hom` | 8080 (api+web) | patrocinio-hom.lglabs.tech              |
 
 Removidos em **2026-09-10**: `album-copa` (album.lgmateus.com; último dump em
 `~/backups/albumcopa/`), a stack `rustdesk`, o ambiente de teste `patrocinio.lglabs.tech`
@@ -21,9 +22,9 @@ Removidos em **2026-09-10**: `album-copa` (album.lgmateus.com; último dump em
 `/etc/komodo/secrets` e webhooks — sem backup, por decisão. `lgmateus` está **parada** (não
 apagada). Pendente só o DNS `album.lgmateus.com` (lglabs.tech é A wildcard).
 
-Em **2026-09-16** SiPE e ITSM voltaram — **só como homologação** (`sipe-hom` e `itsm-hom`,
-ver seções próprias), a pedido, em bancos novos e sem nenhum dado da GTD restaurado. Só o
-`embratur` (site Payload) segue fora.
+Em **2026-09-16** SiPE, ITSM e Patrocínio subiram — **só como homologação** (`sipe-hom`,
+`itsm-hom` e `patrocinio-hom`, ver seções próprias), a pedido, em bancos novos e sem nenhum
+dado da GTD restaurado. Só o `embratur` (site Payload) segue fora.
 
 A stack do `gestao` tem **dois** containers: a app e o sidecar `jobs`, que roda as tarefas
 agendadas (ver seção própria). As demais têm um só.
@@ -128,10 +129,60 @@ não consegue escrever.
 
 Sem webhook de deploy, igual ao sipe-hom.
 
+## patrocinio-hom (homologação do Patrocínio)
+
+Homologação do **Sistema de Patrocínio** (`gtd-embratur/patrocinio-novo`): ciclo da proposta
+enviada pela organização até a prestação de contas, nota fiscal e encaminhamento pra
+pagamento. Monorepo pnpm — Express (`artifacts/api-server`) + SPA React/Vite
+(`artifacts/web`) + Postgres via drizzle.
+
+### Anexos não funcionam aqui — limitação aceita ao subir
+
+O `objectStorage.ts` da API conversa **direto com o sidecar do Replit** (`127.0.0.1:1106`)
+pra obter credencial GCS e gerar *presigned URL*; o browser faz `PUT` direto no bucket. Não
+existe backend alternativo — o ITSM tem o fallback `ANEXOS_DIR`, este não tem. Fora do
+Replit, portanto, **upload e download de arquivo falham**: anexo de proposta, nota fiscal e
+comprobatórios da prestação de contas.
+
+Funciona o resto: login, criação e tramitação de proposta, admin, gabinete e o RBAC
+multi-perfil da SPEC-025. Consertar é **PR no repo da app**, não infra: o contrato de upload
+nasce no `lib/api-spec` (OpenAPI é a fonte da verdade) e desce pro `api-zod` e o
+`api-client-react` gerados a partir dele.
+
+### Como está montado
+
+O repo **não tem Dockerfile** — é canônico no Replit (Autoscale). Os dois Dockerfiles vivem
+na **config das Builds do Komodo**, não no repo da app. Duas pegadinhas que custaram tempo:
+
+- O campo `dockerfile` da Build é **ignorado quando a fonte é um repo git**: o Komodo passa
+  `-f Dockerfile` e falha com *no such file or directory*. Quem escreve o Dockerfile no
+  clone é o **`pre_build`** (com `shell_mode`, via heredoc).
+- O `vite.config.ts` lança se `PORT` **ou** `BASE_PATH` faltarem — e isso vale pro
+  `vite build`, que só carrega o config. Por isso o build da SPA passa as duas
+  (`BASE_PATH=/`, já que a SPA é servida na raiz).
+
+Front e API precisam da **mesma origem**, porque o cliente React chama caminhos relativos
+(`/api/...`). Quem une os dois é o Traefik: o router da API casa
+``Host(...) && PathPrefix(`/api`)`` com `priority=100`, o da SPA casa só o Host com
+`priority=10`.
+
+Efeitos colaterais externos (Monday, Gmail) ficam desligados por `MONDAY_DISABLED` e
+`EMAIL_DISABLED`. O código já se protegeria sozinho — o portão de produção é
+`REPLIT_DEPLOYMENT`, que não existe fora do Replit — mas as envs evitam até a tentativa de
+conexão.
+
+O schema **não precisa de migração manual**: a API roda `ensureSchema()` no boot e cria
+enums/tabelas/colunas que faltarem. O seed (`lib/db/src/seed.ts`) traz 7 usuários
+`@embratur.test` com senha, propostas em vários estados e prestações de contas em todas as
+fases. Roda com o `tsx` que está em `lib/db/node_modules/.bin/` dentro da imagem da API.
+
+Sem webhook de deploy, igual às outras homologações.
+
 ## Isolamento (container)
 
 Cada app roda como container **não-root** (`node` no lgmateus; UID `10001` em
-turmasunb/gestao/itsm-hom; `101` no ericsongomes; `1001` no sipe-hom), com `cap_drop: ALL`,
+turmasunb/gestao/itsm-hom e na api do patrocinio-hom; `101` no ericsongomes e na web do
+patrocinio-hom; `1001` no sipe-hom), com `cap_drop: ALL`,
 `no-new-privileges` e `read_only: true` na raiz (exceto turmasunb, que escreve backup
 em volume) — os diretórios que a app precisa escrever viram `tmpfs`. Cada container só
 entra nas redes Docker que precisa:
@@ -264,6 +315,8 @@ que vai rodar o sistema em outro servidor, recebe o agendamento junto com o
 - **itsm-hom**: db/role `itsm_hom`, schema via `prisma db push` (roda no start do container).
   Só dado sintético, do `seed-homolog.ts`. Como o picker entra como qualquer usuário do
   banco, **não restaurar dump de produção aqui**.
+- **patrocinio-hom**: db/role `patrocinio_hom`, schema via `ensureSchema()` no boot da API
+  (aditivo — cria o que faltar, não remove). Só dado sintético, do seed do `lib/db`.
 - Postgres escuta em `listen_addresses='*'` (`etc/postgresql/10-docker.conf`); o controle
   de acesso real é `pg_hba.conf` (scram, faixa `172.16.0.0/12` — todas as bridges do
   Docker) e `ufw` (5432 fechado pra internet, liberado só para essa faixa).
