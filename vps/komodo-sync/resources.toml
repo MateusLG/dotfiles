@@ -67,6 +67,20 @@ GESTAO_CONFORMIDADE_ATIVA=[[GESTAO_CONFORMIDADE_ATIVA]]
 ##
 
 [[stack]]
+name = "itsm-hom"
+[stack.config]
+server = "srv1"
+auto_pull = false
+repo = "MateusLG/dotfiles"
+run_directory = "vps/stacks/itsm-hom"
+environment = """
+ITSM_HOM_DATABASE_URL=[[ITSM_HOM_DATABASE_URL]]
+ITSM_HOM_NEXTAUTH_SECRET=[[ITSM_HOM_NEXTAUTH_SECRET]]
+"""
+
+##
+
+[[stack]]
 name = "lgmateus"
 [stack.config]
 server = "srv1"
@@ -144,6 +158,21 @@ repo = "KodiumAI/OS48-CREA"
 build_args = """
 VITE_GOOGLE_MAPS_API_KEY=[[GESTAO_VITE_GOOGLE_MAPS_API_KEY]]
 VITE_SGF_RMO_URL_TEMPLATE=[[GESTAO_VITE_SGF_RMO_URL_TEMPLATE]]
+"""
+
+##
+
+[[build]]
+name = "itsm-hom"
+[build.config]
+builder = "srv1"
+git_account = "MateusLG"
+repo = "gtd-embratur/itsm-embratur"
+use_buildx = true
+## As libs @gtd-embratur/* vêm do GitHub Packages; o Dockerfile lê o token por
+## secret mount do BuildKit (nunca build_arg, que ficaria no histórico da imagem).
+secret_args = """
+GITHUB_PACKAGES_TOKEN=[[GITHUB_PACKAGES_TOKEN]]
 """
 
 ##

@@ -1,0 +1,89 @@
+## ITSM Embratur (service desk: chamados, SLA, RDM, base de conhecimento) em
+## HOMOLOGAÇÃO. Repo: gtd-embratur/itsm-embratur.
+##
+## `HOMOL=true` desliga o login Google e liga o picker de usuários sem senha
+## (`src/lib/homol.ts`) — mesmo mecanismo do sipe-hom, e a origem dele: o
+## SiPE copiou a ideia daqui. Diferença importante: o picker do ITSM entra
+## como QUALQUER usuário do banco, não só personas sintéticas, e não tem
+## guarda de boot por domínio. Por isso o banco deste ambiente só pode conter
+## o mundo fake do `scripts/seed-homolog.ts`.
+##
+## A app nasceu no Replit, o que explica duas coisas no compose:
+##   - `ANEXOS_DIR` setado: sem ele o storage de anexos tenta falar com o
+##     sidecar de Object Storage do Replit (127.0.0.1:1106), que não existe
+##     aqui;
+##   - porta 5000, não 3000.
+##
+## O schema é sincronizado com `prisma db push` no start (CMD da imagem), não
+## `migrate deploy`: a cadeia de migrations do repo não tem a migration
+## inicial (o schema nasceu por db push no Replit) e `migrate deploy` quebra
+## em banco vazio.
+
+services:
+  itsm-hom:
+    image: itsm-hom:latest
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+      ## Next standalone escreve cache de fetch/ISR aqui; a raiz é read_only.
+      - /app/.next/cache
+    environment:
+      TZ: America/Sao_Paulo
+
+      ## Picker de usuários sem senha na tela de login; sem a flag, as rotas
+      ## /api/homol/* respondem 404.
+      HOMOL: "true"
+
+      NEXTAUTH_URL: https://itsm-hom.lglabs.tech
+      NEXTAUTH_SECRET: ${ITSM_HOM_NEXTAUTH_SECRET}
+      AUTH_TRUST_HOST: "true"
+
+      DATABASE_URL: ${ITSM_HOM_DATABASE_URL}
+
+      ## AUTH_GOOGLE_* e ALLOWED_GOOGLE_HD ausentes de propósito: a checagem
+      ## de domínio é fail-closed ("sem_dominio" → login negado por política),
+      ## que é o que queremos — quem entra é o picker.
+
+      ## Backend de anexos em disco. O volume cobre /dados porque a imagem
+      ## pré-cria /dados/anexos com posse do UID 10001 — um volume nomeado
+      ## novo herda essa posse na primeira montagem.
+      ANEXOS_DIR: /dados/anexos
+
+      ## SMTP ausente: as notificações por e-mail viram no-op com aviso no
+      ## log. O sino in-app continua funcionando.
+
+      LOG_LEVEL: info
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - edge
+    volumes:
+      - anexos:/dados
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.itsm-hom.rule=Host(`itsm-hom.lglabs.tech`)
+      - traefik.http.routers.itsm-hom.entrypoints=websecure
+      - traefik.http.routers.itsm-hom.tls.options=cf-aop@file
+      - traefik.http.services.itsm-hom.loadbalancer.server.port=5000
+    healthcheck:
+      ## A app não tem endpoint de health e a imagem (node:slim) não traz
+      ## curl nem wget — o próprio node faz o probe contra /login, que é
+      ## público (o middleware libera).
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:5000/login',r=>process.exit(r.statusCode<400?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+volumes:
+  anexos:
+
+networks:
+  edge:
+    external: true

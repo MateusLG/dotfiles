@@ -11,6 +11,7 @@ e do systemd+nginx pro Komodo+Traefik em containers em agosto/2026).
 | ericsongomes | `ericsongomes`  | 8080               | ericsongomes.com.br, www.ericsongomes.com.br    |
 | faturamento  | `faturamento`   | 8000               | faturamento.kodium.ai                         |
 | SiPE (homolog) | `sipe-hom`    | 3000               | sipe-hom.lglabs.tech                            |
+| ITSM (homolog) | `itsm-hom`    | 5000               | itsm-hom.lglabs.tech                            |
 
 Removidos em **2026-09-10**: `album-copa` (album.lgmateus.com; último dump em
 `~/backups/albumcopa/`), a stack `rustdesk`, o ambiente de teste `patrocinio.lglabs.tech`
@@ -20,9 +21,9 @@ Removidos em **2026-09-10**: `album-copa` (album.lgmateus.com; último dump em
 `/etc/komodo/secrets` e webhooks — sem backup, por decisão. `lgmateus` está **parada** (não
 apagada). Pendente só o DNS `album.lgmateus.com` (lglabs.tech é A wildcard).
 
-Em **2026-09-16** o SiPE voltou — **só como homologação** (`sipe-hom`, ver seção própria),
-a pedido, num banco novo e sem nenhum dado da GTD restaurado. `embratur` e `itsm` seguem
-fora.
+Em **2026-09-16** SiPE e ITSM voltaram — **só como homologação** (`sipe-hom` e `itsm-hom`,
+ver seções próprias), a pedido, em bancos novos e sem nenhum dado da GTD restaurado. Só o
+`embratur` (site Payload) segue fora.
 
 A stack do `gestao` tem **dois** containers: a app e o sidecar `jobs`, que roda as tarefas
 agendadas (ver seção própria). As demais têm um só.
@@ -86,10 +87,51 @@ Sem webhook de deploy: a Build aponta pra `main` do repo da app, mas quem decide
 subir versão nova é o usuário (`RunBuild sipe-hom` → `DeployStack sipe-hom`). Um push na
 `main` do SiPE não redeploya este ambiente sozinho.
 
+## itsm-hom (homologação do ITSM)
+
+Homologação do **ITSM Embratur** (`gtd-embratur/itsm-embratur`): service desk com chamados,
+SLA, RDM e base de conhecimento. Next 15 + Prisma + Auth.js v5.
+
+`HOMOL=true` desliga o login Google (a checagem de domínio é fail-closed) e liga o picker de
+usuários sem senha — **é daqui que o mecanismo do [sipe-hom](#sipe-hom-homologação-do-sipe)
+veio**. Duas diferenças importantes em relação ao do SiPE, que é a versão endurecida depois:
+o picker do ITSM entra como **qualquer usuário do banco** (não só personas sintéticas) e não
+há guarda de boot por domínio. Por isso este banco só pode conter o mundo fake do
+`scripts/seed-homolog.ts` — 54 usuários e 208 chamados espalhados pelos últimos 90 dias, com
+âncoras fixas por perfil (`admin@`, `gerente@`, `coordenador@`, `analista@`,
+`colaborador@embratur.gov.br`) pra logar direto em cada visão.
+
+Aberto na internet, sem Cloudflare Access, pela mesma decisão de 2026-09-16 do sipe-hom.
+
+A app nasceu no **Replit**, o que explica três coisas:
+
+- **`ANEXOS_DIR=/dados/anexos`** na stack: sem essa env o storage de anexos tenta falar com o
+  sidecar de Object Storage do Replit (`127.0.0.1:1106`), que não existe aqui. O volume cobre
+  `/dados` porque a imagem pré-cria `/dados/anexos` já com posse do UID `10001` — um volume
+  nomeado novo herda essa posse na primeira montagem.
+- **Porta 5000**, não 3000.
+- **`prisma db push` no start** (CMD da imagem), não `migrate deploy`: a cadeia de migrations
+  do repo não tem a migration inicial (o schema nasceu por db push no Replit) e
+  `migrate deploy` quebra em banco vazio.
+
+O build depende do **GitHub Packages**: as libs `@gtd-embratur/{components,icons,tokens}` são
+privadas da org. O Dockerfile recebe o token por **secret mount do BuildKit**
+(`--mount=type=secret`), então a Build é a única da VPS com `use_buildx = true` e
+`secret_args`. Hoje a Variable `GITHUB_PACKAGES_TOKEN` guarda o token do **`gh` CLI do
+usuário** — funciona, mas quebra se ele rodar `gh auth refresh`/`logout`; o certo é um PAT
+classic dedicado com `read:packages`.
+
+O seed não roda na imagem de produção (o runner só tem o standalone — sem `tsx`, sem
+`scripts/`). Pra reseedar, buildar o **stage `build`** do Dockerfile e rodar o `tsx` de lá,
+lembrando de `chown -R 10001:10001` no volume depois, senão os anexos nascem `root` e a app
+não consegue escrever.
+
+Sem webhook de deploy, igual ao sipe-hom.
+
 ## Isolamento (container)
 
 Cada app roda como container **não-root** (`node` no lgmateus; UID `10001` em
-turmasunb/gestao; `101` no ericsongomes; `1001` no sipe-hom), com `cap_drop: ALL`,
+turmasunb/gestao/itsm-hom; `101` no ericsongomes; `1001` no sipe-hom), com `cap_drop: ALL`,
 `no-new-privileges` e `read_only: true` na raiz (exceto turmasunb, que escreve backup
 em volume) — os diretórios que a app precisa escrever viram `tmpfs`. Cada container só
 entra nas redes Docker que precisa:
@@ -219,6 +261,9 @@ que vai rodar o sistema em outro servidor, recebe o agendamento junto com o
 - **sipe-hom**: db/role `sipe_hom`, schema via `prisma migrate deploy` (roda no entrypoint
   do container). Só dado sintético — as personas do picker e o que for criado no teste;
   o sync com o Workspace da Embratur não roda aqui de propósito.
+- **itsm-hom**: db/role `itsm_hom`, schema via `prisma db push` (roda no start do container).
+  Só dado sintético, do `seed-homolog.ts`. Como o picker entra como qualquer usuário do
+  banco, **não restaurar dump de produção aqui**.
 - Postgres escuta em `listen_addresses='*'` (`etc/postgresql/10-docker.conf`); o controle
   de acesso real é `pg_hba.conf` (scram, faixa `172.16.0.0/12` — todas as bridges do
   Docker) e `ufw` (5432 fechado pra internet, liberado só para essa faixa).
