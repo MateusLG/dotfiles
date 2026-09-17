@@ -69,7 +69,9 @@ services:
       ## comentar as duas linhas e redeployar religa tudo sem rebuild, que é o
       ## caminho pra validar as entregas da SPEC-009.
       MODULO_RELATO_ACAO_DESABILITADO: "1"
-      MODULO_INDICADORES_DESABILITADO: "1"
+      ## LIGADO temporariamente (2026-09-17) pra validar as entregas da
+      ## SPEC-009 no PR 87. Descomentar devolve o espelho de prod.
+      # MODULO_INDICADORES_DESABILITADO: "1"
 
       ## A doc MkDocs não sobe nesta VPS; vazio esconde o item do menu em vez
       ## de deixar um link pra 404.
