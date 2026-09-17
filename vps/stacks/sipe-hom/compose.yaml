@@ -62,9 +62,14 @@ services:
       HERMES_INTEGRACAO_DESABILITADA: "1"
       SKIP_HERMES_SECRETS_BOOT_CHECK: "1"
 
-      ## MODULO_RELATO_ACAO_DESABILITADO / MODULO_INDICADORES_DESABILITADO
-      ## ausentes de propósito: o homolog institucional desliga os dois na
-      ## janela GPE 2027, aqui o ambiente existe pra testar o sistema inteiro.
+      ## Espelha o recorte de produção da janela GPE 2027: Relato de Ação e
+      ## Indicadores (que arrasta Relato de Indicadores e Apurações) saem da
+      ## home, da sidebar, das abas de /aprovacoes, e suas rotas redirecionam
+      ## pra home com os endpoints em 404. Só o valor exato "1" desliga —
+      ## comentar as duas linhas e redeployar religa tudo sem rebuild, que é o
+      ## caminho pra validar as entregas da SPEC-009.
+      MODULO_RELATO_ACAO_DESABILITADO: "1"
+      MODULO_INDICADORES_DESABILITADO: "1"
 
       ## A doc MkDocs não sobe nesta VPS; vazio esconde o item do menu em vez
       ## de deixar um link pra 404.

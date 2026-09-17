@@ -81,8 +81,13 @@ login Google normal; este aqui é o cenário "VPS externa" que o próprio códig
 - Integração **Hermes desligada** (`HERMES_INTEGRACAO_DESABILITADA=1`); o
   `SKIP_HERMES_SECRETS_BOOT_CHECK=1` é obrigatório junto, senão o boot aborta cobrando os
   secrets HMAC mesmo com a integração off.
-- Os módulos Relato de Ação e Indicadores, que o homolog institucional desliga na janela
-  GPE 2027, ficam **ligados** aqui — o ambiente existe pra testar o sistema inteiro.
+- Os módulos Relato de Ação e Indicadores ficam **desligados**
+  (`MODULO_RELATO_ACAO_DESABILITADO=1`, `MODULO_INDICADORES_DESABILITADO=1`), espelhando o
+  recorte de produção da janela GPE 2027 — a pedido do usuário em 2026-09-17, que compara
+  esta tela com a de prod. Antes ficavam ligados "pra testar o sistema inteiro". Para
+  validar as entregas da SPEC-009 (módulo de indicadores) é preciso **comentar as duas
+  linhas e redeployar** — é só env, não precisa de rebuild; com a flag ligada,
+  `/indicadores` redireciona pra home e os endpoints do bloco respondem 404.
 
 Sem webhook de deploy: a Build aponta pra `main` do repo da app, mas quem decide quando
 subir versão nova é o usuário (`RunBuild sipe-hom` → `DeployStack sipe-hom`). Um push na
