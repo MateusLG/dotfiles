@@ -118,7 +118,11 @@ A app nasceu no **Replit**, o que explica três coisas:
 - **Porta 5000**, não 3000.
 - **`prisma db push` no start** (CMD da imagem), não `migrate deploy`: a cadeia de migrations
   do repo não tem a migration inicial (o schema nasceu por db push no Replit) e
-  `migrate deploy` quebra em banco vazio.
+  `migrate deploy` quebra em banco vazio. O compose sobrescreve o `command` só para somar
+  **`--accept-data-loss`**: sem a flag o push aborta em qualquer mudança que o Prisma julgue
+  arriscada (foi uma unique nova em `Notificacao` que derrubou o deploy de 2026-09-24) e o
+  container fica em restart loop — com webhook, a homologação cai sozinha. O banco daqui só
+  tem dado de seed, então a flag é barata; em produção não seria.
 
 O build depende do **GitHub Packages**: as libs `@gtd-embratur/{components,icons,tokens}` são
 privadas da org. O Dockerfile recebe o token por **secret mount do BuildKit**
@@ -132,11 +136,14 @@ O seed não roda na imagem de produção (o runner só tem o standalone — sem 
 lembrando de `chown -R 10001:10001` no volume depois, senão os anexos nascem `root` e a app
 não consegue escrever.
 
-Sem webhook de deploy, igual ao sipe-hom.
+**Webhook de deploy ligado desde 2026-09-24**: push na `main` do repo da app dispara a
+Procedure `deploy-itsm-hom` (RunBuild → DeployStack), igual às apps de produção. Antes disso
+a imagem ficou parada no commit `b560c2d` (16/09) enquanto a `main` andava 89 commits — não
+existe registry, então só o RunBuild troca a `itsm-hom:latest`.
 
 ## patrocinio-hom (homologação do Patrocínio)
 
-> **Parada desde 2026-09-16, a pedido — não apagada.** `StopStack patrocinio-hom` no Komodo:
+> **Parada desde 2026-09-17, a pedido — não apagada.** `StopStack patrocinio-hom` no Komodo:
 > os dois containers ficam `Exited`, o Traefik perde a rota (o domínio responde 404) e todo
 > o resto continua de pé — stack, as duas Builds, as imagens, as Variables, o banco
 > `patrocinio_hom` com o seed e este compose. Religar é `StartStack` (ou `DeployStack`, que
@@ -244,8 +251,9 @@ RunBuild (rebuilda a imagem <app>:latest do commit novo)
 ```
 
 Repos com webhook configurado: `lgmateus`, `turmasunb`, `site-ericson`,
-`faturamento` e `OS48-CREA` (estes dois na org `KodiumAI`; o segundo alimenta `gestao`).
-**`novo-sipe` não tem** — o `sipe-hom` é homologação e sobe versão quando o usuário manda
+`faturamento` e `OS48-CREA` (estes dois na org `KodiumAI`; o segundo alimenta `gestao`) e
+`itsm-embratur` (org `gtd-embratur`, desde 2026-09-24 — é homologação, mas acompanha a
+`main`). **`novo-sipe` não tem** — o `sipe-hom` sobe versão quando o usuário manda
 (ver seção própria).
 
 Este repo (**`dotfiles`**) **não tem webhook** — um push aqui pode afetar várias Stacks

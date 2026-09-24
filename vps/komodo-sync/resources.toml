@@ -436,6 +436,28 @@ executions = [
 ##
 
 [[procedure]]
+name = "deploy-itsm-hom"
+## Webhook de push na main do gtd-embratur/itsm-embratur aponta para esta
+## procedure (listener/github/procedure/deploy-itsm-hom/main): a imagem é local
+## (sem registry), então a stack só muda depois do RunBuild.
+
+[[procedure.config.stage]]
+name = "Build"
+enabled = true
+executions = [
+  { execution.type = "RunBuild", execution.params.build = "itsm-hom", enabled = true }
+]
+
+[[procedure.config.stage]]
+name = "Deploy"
+enabled = true
+executions = [
+  { execution.type = "DeployStack", execution.params.stack = "itsm-hom", execution.params.services = [], enabled = true }
+]
+
+##
+
+[[procedure]]
 name = "deploy-lgmateus"
 
 [[procedure.config.stage]]

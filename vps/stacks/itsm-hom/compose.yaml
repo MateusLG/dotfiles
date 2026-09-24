@@ -17,7 +17,8 @@
 ## O schema é sincronizado com `prisma db push` no start (CMD da imagem), não
 ## `migrate deploy`: a cadeia de migrations do repo não tem a migration
 ## inicial (o schema nasceu por db push no Replit) e `migrate deploy` quebra
-## em banco vazio.
+## em banco vazio. O `command` abaixo repete o CMD da imagem só para somar
+## `--accept-data-loss` (ver comentário lá embaixo).
 
 services:
   itsm-hom:
@@ -58,6 +59,16 @@ services:
       ## log. O sino in-app continua funcionando.
 
       LOG_LEVEL: info
+    ## Mesmo CMD da imagem + `--accept-data-loss`. Sem a flag o db push aborta
+    ## em qualquer mudança que ele julgue arriscada (em 2026-09-24 foi uma
+    ## unique nova em Notificacao) e o container entra em restart loop — com o
+    ## deploy automático por webhook isso derruba a homologação sozinho. O
+    ## banco daqui só tem o mundo fake do seed-homolog, então perder dado na
+    ## sincronização é aceitável; em produção não seria.
+    command:
+      - sh
+      - -c
+      - prisma db push --skip-generate --accept-data-loss --schema prisma/schema.prisma && exec node server.js
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
