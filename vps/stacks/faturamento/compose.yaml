@@ -10,6 +10,8 @@
 services:
   faturamento:
     image: faturamento:latest
+    env_file:
+      - /etc/faturamento/google.env
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -24,8 +26,6 @@ services:
       TZ: America/Sao_Paulo
       FAT_DATABASE_URL: ${FATURAMENTO_DATABASE_URL}
       FAT_SESSAO_SECRET: ${FATURAMENTO_SESSAO_SECRET}
-      FAT_GOOGLE_CLIENT_ID: ${FATURAMENTO_GOOGLE_CLIENT_ID:?defina FATURAMENTO_GOOGLE_CLIENT_ID}
-      FAT_GOOGLE_CLIENT_SECRET: ${FATURAMENTO_GOOGLE_CLIENT_SECRET:?defina FATURAMENTO_GOOGLE_CLIENT_SECRET}
       FAT_GOOGLE_REDIRECT_URI: https://faturamento.kodium.ai/auth/google/callback
     extra_hosts:
       - "host.docker.internal:host-gateway"
