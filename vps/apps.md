@@ -36,9 +36,10 @@ repo de dotfiles) e publicada como `<app>:latest` (mais uma tag com o hash do co
 ## faturamento (sistema de faturamento da Kodium)
 
 Sistema interno de OS/pagamentos/repasses (`KodiumAI/faturamento`): FastAPI +
-Jinja2/HTMX, dark. Login por usuário (tabela `usuario`, senha scrypt, cookie de sessão
-assinado com o Variable `FATURAMENTO_SESSAO_SECRET`); a migração seeda a equipe (Michel,
-Nathan, Juan, Mateus, Marcus, Allyson) com a senha padrão do time. Cascata de repasses é
+Jinja2/HTMX, dark. Login Google Workspace restrito a contas verificadas `@kodium.ai`,
+com cookie de sessão assinado pelo Variable `FATURAMENTO_SESSAO_SECRET`. O cliente OAuth
+usa `FATURAMENTO_GOOGLE_CLIENT_ID` e `FATURAMENTO_GOOGLE_CLIENT_SECRET` no stack.
+Cascata de repasses é
 congelada em snapshot na confirmação do pagamento — editar template depois não recalcula
 confirmados.
 
