@@ -24,9 +24,13 @@ Usuário comum `mateus` no grupo `sudo`. Os arquivos espelham os caminhos reais 
 - [`bin/backup-vps.sh`](bin/backup-vps.sh) — backup do insubstituível (bancos,
   banco do Komodo, secrets, volumes docker com dado, mundo do Minecraft, configs
   de sistema). Código das apps não entra — está no GitHub.
+- [`docs/2026-10-05-itsm-rdm.md`](docs/2026-10-05-itsm-rdm.md) — publicação dos PRs de RDM na homologação, validações, pendências e recuperação.
+- [`bin/itsm-rdm-job.py`](bin/itsm-rdm-job.py) — chama os jobs RDM internos sem expor o segredo.
+- `etc/systemd/system/itsm-rdm-job.{service,timer}` — fila/reconciliação RDM a cada cinco minutos.
+- `etc/systemd/system/clamav-daemon.socket.d/zz-itsm.conf` — socket privado do scanner com permissão `0660`.
 - [`mobile-claude.md`](mobile-claude.md) — acesso ao Claude Code pelo celular (mosh + tmux + Termius).
-- `etc/systemd/system/{pg-backup.service,pg-backup.timer}` → as únicas units de app que
-  seguem em systemd (as 4 apps migradas foram removidas daqui e do host).
+- `etc/systemd/system/{pg-backup.service,pg-backup.timer}` → backup diário do Postgres.
+  As quatro apps migradas foram removidas do systemd; o gatilho de jobs RDM acima também usa timer.
 - `etc/ssh/sshd_config.d/00-hardening.conf` → `/etc/ssh/sshd_config.d/00-hardening.conf`
 - `etc/ssh/sshd_config.d/10-keepalive.conf` → `/etc/ssh/sshd_config.d/10-keepalive.conf`
 - `etc/fail2ban/jail.local` → `/etc/fail2ban/jail.local`
