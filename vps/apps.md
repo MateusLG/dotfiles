@@ -130,7 +130,7 @@ privadas da org. O Dockerfile recebe o token por **secret mount do BuildKit**
 na VPS exige credencial válida com `read:packages`; autenticação do `gh` CLI, por si só,
 não comprova esse escopo. Não registrar credenciais no Git, contexto de build ou logs.
 O CI usa `GITHUB_TOKEN` efêmero com leitura dos três pacotes explicitamente concedida
-ao Actions do ITSM. A imagem RDM `8a5a92e` reutilizou a camada previamente autenticada,
+ao Actions do ITSM. A imagem RDM `1f3435f` reutilizou a camada previamente autenticada,
 com lockfile inalterado e camada base já presente no cache; instalação nova passou no CI. Rebuilds que
 mudem dependências exigem validar o secret da VPS antes de substituir a imagem.
 
