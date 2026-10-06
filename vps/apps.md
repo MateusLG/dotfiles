@@ -118,13 +118,11 @@ A app nasceu no **Replit**, o que explica três coisas:
   `/dados` porque a imagem pré-cria `/dados/anexos` já com posse do UID `10001` — um volume
   nomeado novo herda essa posse na primeira montagem.
 - **Porta 5000**, não 3000.
-- **`prisma db push` no start** (CMD da imagem), não `migrate deploy`: a cadeia de migrations
-  do repo não tem a migration inicial (o schema nasceu por db push no Replit) e
-  `migrate deploy` quebra em banco vazio. O compose sobrescreve o `command` só para somar
-  **`--accept-data-loss`**: sem a flag o push aborta em qualquer mudança que o Prisma julgue
-  arriscada (foi uma unique nova em `Notificacao` que derrubou o deploy de 2026-09-24) e o
-  container fica em restart loop — com webhook, a homologação cai sozinha. O banco daqui só
-  tem dado de seed, então a flag é barata; em produção não seria.
+- **Startup explícito `node server.js`** no compose: alterações do schema exigem
+  procedimento controlado de migração, backup e validação de restauração, fora da
+  inicialização. A cadeia histórica recebeu baseline durante a homologação RDM;
+  não reintroduzir `db push --accept-data-loss` no startup. Ver o
+  [procedimento da stack](stacks/itsm-hom/README.md).
 
 O build depende do **GitHub Packages**: as libs `@gtd-embratur/{components,icons,tokens}` são
 privadas da org. O Dockerfile recebe o token por **secret mount do BuildKit**
@@ -385,3 +383,11 @@ próprio Komodo não gerencia). Por app nova:
    `https://komodo.lgmateus.com/listener/github/procedure/deploy-<app>/main`.
 8. Cloudflare: A record → VPS (proxied), SSL mode Full (strict), Origin Certificate
    novo se o domínio não estiver coberto por um wildcard já existente.
+
+## ITSM — homologação RDM
+
+Stack [`stacks/itsm-hom`](stacks/itsm-hom/README.md): aplicação por commit,
+PostgreSQL/anexos sintéticos e ClamAV. SMTP usa Mailpit privado em rede Docker
+interna, sem relay, portas publicadas ou exposição por Traefik. Captura de teste
+não comprova entrega institucional. Cargos, autoridades e calendário oficiais
+continuam exigindo documento/atestado; não há seed de aprovações.
