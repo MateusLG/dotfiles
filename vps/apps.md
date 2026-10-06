@@ -126,10 +126,13 @@ A app nasceu no **Replit**, o que explica três coisas:
 
 O build depende do **GitHub Packages**: as libs `@gtd-embratur/{components,icons,tokens}` são
 privadas da org. O Dockerfile recebe o token por **secret mount do BuildKit**
-(`--mount=type=secret`), então a Build é a única da VPS com `use_buildx = true` e
-`secret_args`. Hoje a Variable `GITHUB_PACKAGES_TOKEN` guarda o token do **`gh` CLI do
-usuário** — funciona, mas quebra se ele rodar `gh auth refresh`/`logout`; o certo é um PAT
-classic dedicado com `read:packages`.
+(`--mount=type=secret`), com `use_buildx = true` e `secret_args`. Uma instalação nova
+na VPS exige credencial válida com `read:packages`; autenticação do `gh` CLI, por si só,
+não comprova esse escopo. Não registrar credenciais no Git, contexto de build ou logs.
+O CI usa `GITHUB_TOKEN` efêmero com leitura dos três pacotes explicitamente concedida
+ao Actions do ITSM. A imagem RDM `fc4ec5a` reutilizou a camada previamente autenticada,
+com lockfile inalterado e camada base já presente no cache; instalação nova passou no CI. Rebuilds que
+mudem dependências exigem validar o secret da VPS antes de substituir a imagem.
 
 O seed não roda na imagem de produção (o runner só tem o standalone — sem `tsx`, sem
 `scripts/`). Pra reseedar, buildar o **stage `build`** do Dockerfile e rodar o `tsx` de lá,
