@@ -130,7 +130,7 @@ privadas da org. O Dockerfile recebe o token por **secret mount do BuildKit**
 na VPS exige credencial válida com `read:packages`; autenticação do `gh` CLI, por si só,
 não comprova esse escopo. Não registrar credenciais no Git, contexto de build ou logs.
 O CI usa `GITHUB_TOKEN` efêmero com leitura dos três pacotes explicitamente concedida
-ao Actions do ITSM. A imagem RDM `fc4ec5a` reutilizou a camada previamente autenticada,
+ao Actions do ITSM. A imagem RDM `8a5a92e` reutilizou a camada previamente autenticada,
 com lockfile inalterado e camada base já presente no cache; instalação nova passou no CI. Rebuilds que
 mudem dependências exigem validar o secret da VPS antes de substituir a imagem.
 
@@ -334,7 +334,9 @@ que vai rodar o sistema em outro servidor, recebe o agendamento junto com o
 - **sipe-hom**: db/role `sipe_hom`, schema via `prisma migrate deploy` (roda no entrypoint
   do container). Só dado sintético — as personas do picker e o que for criado no teste;
   o sync com o Workspace da Embratur não roda aqui de propósito.
-- **itsm-hom**: db/role `itsm_hom`, schema via `prisma db push` (roda no start do container).
+- **itsm-hom**: db/role `itsm_hom`, schema evoluído por migrations controladas,
+  com backup e ensaio de restauração fora do startup. O container inicia apenas
+  `node server.js`, sem DDL automático.
   Só dado sintético, do `seed-homolog.ts`. Como o picker entra como qualquer usuário do
   banco, **não restaurar dump de produção aqui**.
 - **patrocinio-hom**: db/role `patrocinio_hom`, schema via `ensureSchema()` no boot da API
