@@ -8,6 +8,26 @@ ambiente privado do operador; nenhum segredo é versionado. Passe esse arquivo
 explicitamente por `docker compose --env-file CAMINHO_PRIVADO` em operações
 fora do Komodo, preservando os valores existentes.
 
+## Build com dependências privadas
+
+O `Dockerfile` desta pasta usa Node e frontend BuildKit presos por digest,
+pnpm 10.34.5, lockfile congelado e segredo obrigatório `npm_auth`. O contexto
+deve vir de `git archive` da revisão do ITSM, sem configuração do operador.
+Passar o mesmo SHA em `DEPLOYED_REVISION` e no manifesto público.
+
+O segredo é um arquivo npmrc privado (`0600`), fora do contexto, contendo
+autenticação do registry GitHub Packages com permissão de leitura. Montar com
+`--secret id=npm_auth,src=CAMINHO_PRIVADO_NPMRC`; nunca usar token em ARG, ENV,
+linha de comando ou arquivo versionado. A instalação ignora hooks e scripts;
+somente os rebuilds permitidos rodam depois de desmontar o segredo.
+
+Para provar instalação do zero, construir com `--no-cache`: o conteúdo de
+secrets não invalida cache BuildKit. Cache e imagens de dependências ficam
+privados no host. Conferir código de saída, label, CMD/UID, ausência do token
+em history/config e arquivos de credencial na imagem. Remover o npmrc privado
+após a operação. Atualizar Compose só após build completo e smoke aprovados;
+comparar banco/anexos/segredos antes/depois e preservar a imagem compatível.
+
 ## SMTP capturado
 
 `rdm-mailpit` aceita SMTP em 1025 na rede Docker `rdm-email` interna, sem
