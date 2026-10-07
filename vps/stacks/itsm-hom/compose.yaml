@@ -1,11 +1,11 @@
-## Homologacao ITSM: PRs #197-#207, commit fb1adb55ab9e74b76b2c02a4835663f98c0cd421.
+## Homologacao ITSM: PRs #197-#210, commit 8f071ce9a521e15507fc61d230d395ba6e623692.
 ## Imagem Linux construida com dependencias reais e revisao imutavel.
 ## Banco/anexos contêm o mundo sintetico de homologacao; HOMOL permite picker.
 ## Migracoes sao aplicadas em procedimento controlado com backup/restauracao,
 ## nunca db push --accept-data-loss na inicializacao.
 services:
   itsm-hom:
-    image: itsm-hom:rdm-fb1adb5
+    image: itsm-hom:rdm-8f071ce
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -20,6 +20,7 @@ services:
     environment:
       TZ: America/Sao_Paulo
       HOMOL: "true"
+      ALLOWED_GOOGLE_HD: "example.invalid" # Somente pré-cadastros sintéticos; OAuth em HOMOL continua bloqueado.
       NEXTAUTH_URL: https://itsm.lglabs.tech
       APP_URL: https://itsm.lglabs.tech
       AUTH_URL: https://itsm.lglabs.tech
