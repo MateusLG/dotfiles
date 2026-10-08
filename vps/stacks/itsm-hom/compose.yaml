@@ -1,11 +1,11 @@
-## Homologacao ITSM: PRs #197-#210, commit 8f071ce9a521e15507fc61d230d395ba6e623692.
-## Imagem Linux construida com dependencias reais e revisao imutavel.
+## Homologacao ITSM: PRs #197-#215, commit 7692407a7530b72e70f0bfe10ba4c72b95ceee99.
+## Fonte Git fixada por commit; imagem local conferida por ID antes do deploy.
 ## Banco/anexos contêm o mundo sintetico de homologacao; HOMOL permite picker.
 ## Migracoes sao aplicadas em procedimento controlado com backup/restauracao,
 ## nunca db push --accept-data-loss na inicializacao.
 services:
   itsm-hom:
-    image: itsm-hom:rdm-8f071ce
+    image: itsm-hom:rdm-7692407
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
