@@ -20,3 +20,6 @@ brew "git"
 #
 # As Nerd Fonts NÃO vêm por cask: install-nerdfonts.sh baixa direto pra
 # ~/Library/Fonts, sem depender do brew (que precisa de sudo pra instalar).
+
+# Monitor de CPU/RAM na barra de menu
+cask "stats"
