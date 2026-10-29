@@ -10,7 +10,7 @@ aqui, mas estão no histórico do git.
 
 ## Arquivos
 
-- `zshrc` — vai em `~/.zshrc`.
+- `zshrc` — vai em `~/.zshrc`. Carrega `~/.zshrc.local` se existir (fora do repo, pra aliases de trabalho como VPN).
 - `p10k.zsh` — vai em `~/.p10k.zsh`. Gerado pelo `p10k configure`.
 - `gitconfig` — vai em `~/.gitconfig`. Identidade, editor, aliases e credential via `gh`.
 - `gitignore_global` — vai em `~/.gitignore_global`.
