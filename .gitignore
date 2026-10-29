@@ -1,4 +1,1 @@
 vps/komodo/compose.env
-
-# Segredos da homologacao ITSM
-vps/stacks/itsm-hom/.env
