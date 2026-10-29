@@ -189,3 +189,6 @@ source "$HOME/.config/zsh/powerlevel10k/powerlevel10k.zsh-theme"
 
 alias fio='/opt/homebrew/bin/godot --path /Users/mateus/DEV/fio-de-mare'
 alias marca='/opt/homebrew/bin/godot --path /Users/mateus/DEV/dotsmith/a-marca'
+
+# aliases e configs da máquina que não vão pro repo (VPN, hosts de trabalho)
+[[ -f "$HOME/.zshrc.local" ]] && source "$HOME/.zshrc.local"
