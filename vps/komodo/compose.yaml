@@ -54,6 +54,9 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - /proc:/proc
       - /etc/komodo:/etc/komodo
+      ## env_file de stacks fora do ambiente gerado pelo Komodo (faturamento)
+      ## — o compose roda aqui dentro e precisa enxergar o mesmo caminho.
+      - /etc/faturamento:/etc/faturamento:ro
 
 volumes:
   mongo-data:
