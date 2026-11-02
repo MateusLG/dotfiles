@@ -95,7 +95,8 @@ Referências: apple.com, samsung.com, claude.com, anthropic.com.
 
 Máquina atual: **MacBook (Apple Silicon)**, macOS 26. Substituiu o setup
 anterior de Arch Linux + Hyprland + Omarchy e a workstation Windows + WSL2 —
-ignorar referências a `pacman`, `yay`, Hyprland, Waybar, `/mnt/c`,
+ignorar referências a `pacman`, `yay`, Hyprland, Waybar, `/mnt/c` ou
+`explorer.exe`.
 
 - **Pacotes:** Homebrew em `/opt/homebrew`. Nada de `apt`/`pacman`.
 - **Shell:** Zsh + Powerlevel10k, config em `macos/zshrc` do repo de dotfiles
