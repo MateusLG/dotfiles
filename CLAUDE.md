@@ -19,7 +19,8 @@
 - `codex/` — Codex CLI (`config.toml`)
 - `agents/` — skills compartilhadas Codex + Claude Code (`skills/<nome>/SKILL.md`)
 - `nvim/` — customizações sobre o LazyVim (`lua/config/keymaps.lua`)
-- `vps/` — VPS Ubuntu: hardening, ufw, fail2ban, Komodo/Traefik, stacks
+- A infra da VPS (Komodo, Traefik, stacks) fica no repo privado `MateusLG/infra`,
+  não aqui. Este repo é público: nada de IP, cliente, empregador ou dado pessoal.
 
 ## 3. Convenções
 

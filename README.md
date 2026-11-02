@@ -9,7 +9,6 @@ Configurações pessoais do meu setup em **macOS (Apple Silicon)**.
 - [`codex/`](codex/) — configurações do Codex CLI (`config.toml`)
 - [`agents/`](agents/) — skills compartilhadas entre Codex e Claude Code
 - [`nvim/`](nvim/) — customizações do Neovim sobre o LazyVim (keymaps)
-- [`vps/`](vps/) — setup de VPS Ubuntu (Hostinger): hardening SSH, ufw, fail2ban, swap, mise
 
 Cada subpasta tem seu próprio `README.md` descrevendo os arquivos.
 
